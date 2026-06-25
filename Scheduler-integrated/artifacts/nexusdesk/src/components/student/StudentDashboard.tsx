@@ -84,6 +84,7 @@ interface RecordingItem {
   transcript?: string;
   notes?: string;
   showTranscript?: boolean;
+  processing?: boolean;
 }
 
 function RecordingWidget() {
@@ -107,8 +108,9 @@ function RecordingWidget() {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const recognitionRef = useRef<any>(null);
-  const transcriptChunksRef = useRef<string[]>([]);
+  const activeTracksRef = useRef<MediaStreamTrack[]>([]);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const [recordMode, setRecordMode] = useState<"mic" | "zoom">("mic");
 
   useEffect(() => {
     try {
@@ -120,10 +122,55 @@ function RecordingWidget() {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
+      let finalStream: MediaStream;
+
+      if (recordMode === "zoom") {
+        // 1. Get system/screen audio (must capture video too for getDisplayMedia to work)
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { width: 1, height: 1 },
+          audio: true
+        });
+
+        // 2. Get mic audio
+        let micStream: MediaStream | null = null;
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch (micErr) {
+          console.warn("Could not capture microphone, recording system audio only.", micErr);
+        }
+
+        // 3. Merge them using Web Audio API
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        const audioCtx = new AudioContextClass();
+        audioCtxRef.current = audioCtx;
+        const dest = audioCtx.createMediaStreamDestination();
+
+        const tracks: MediaStreamTrack[] = [...screenStream.getTracks()];
+
+        if (screenStream.getAudioTracks().length > 0) {
+          const systemSource = audioCtx.createMediaStreamSource(screenStream);
+          systemSource.connect(dest);
+        } else {
+          alert("Warning: Share system audio was not checked. Only screen video is captured (audio might be silent).");
+        }
+
+        if (micStream) {
+          const micSource = audioCtx.createMediaStreamSource(micStream);
+          micSource.connect(dest);
+          tracks.push(...micStream.getTracks());
+        }
+
+        activeTracksRef.current = tracks;
+        finalStream = dest.stream;
+      } else {
+        // Microphone only
+        finalStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        activeTracksRef.current = finalStream.getTracks();
+      }
+
+      const mediaRecorder = new MediaRecorder(finalStream, { mimeType: "audio/webm" });
+      mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {
@@ -132,56 +179,81 @@ function RecordingWidget() {
       };
 
       mediaRecorder.onstop = () => {
+        // Clean up tracks
+        activeTracksRef.current.forEach(track => track.stop());
+        activeTracksRef.current = [];
+        
+        if (audioCtxRef.current) {
+          audioCtxRef.current.close().catch(() => {});
+          audioCtxRef.current = null;
+        }
+
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         const url = URL.createObjectURL(blob);
-        const mins = Math.floor(elapsed / 60).toString().padStart(2, "0");
-        const secs = (elapsed % 60).toString().padStart(2, "0");
-        const durationStr = `${mins}:${secs}`;
         
-        // Compile speech recognition results
-        const capturedSpeech = transcriptChunksRef.current.join(" ").trim();
-        const finalTranscript = capturedSpeech || "AVL Trees balance factor is calculated as height(left) - height(right). In today's class we analyzed single rotation (LL, RR) and double rotation (LR, RL) cases. Make sure to review the time complexity of search operations which remains O(log n). Let's review the homework questions.";
+        const minsStr = Math.floor(elapsed / 60).toString().padStart(2, "0");
+        const secsStr = (elapsed % 60).toString().padStart(2, "0");
+        const durationStr = `${minsStr}:${secsStr}`;
 
+        const tempId = `rec-${Date.now()}`;
         const newRecording: RecordingItem = {
-          id: `rec-${Date.now()}`,
-          label: `Lecture Recording #${recordings.length + 1}`,
+          id: tempId,
+          label: `${recordMode === "zoom" ? "Zoom Session" : "Lecture Recording"} #${recordings.length + 1}`,
           timestamp: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
           url,
           duration: durationStr,
-          transcript: finalTranscript,
-          showTranscript: false,
+          transcript: "Transcribing and formatting notes via Gemini...",
+          showTranscript: true,
+          processing: true,
         };
-        setRecordings(prev => [newRecording, ...prev]);
-        
-        stream.getTracks().forEach(track => track.stop());
-      };
 
-      // Set up HTML5 Speech Recognition
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = false;
-        recognition.lang = "en-US";
-        
-        transcriptChunksRef.current = [];
-        
-        recognition.onresult = (event: any) => {
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              transcriptChunksRef.current.push(event.results[i][0].transcript);
+        setRecordings(prev => [newRecording, ...prev]);
+
+        // Convert file to Base64 to upload to backend
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = async () => {
+          const base64Audio = reader.result as string;
+          try {
+            const settings = getLLMSettings();
+            const res = await fetch("/api/record/process", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                audioBase64: base64Audio,
+                label: newRecording.label,
+                isOnline: recordMode === "zoom",
+                provider: settings.provider,
+                apiKey: settings.apiKey,
+                model: settings.model,
+              }),
+            });
+            const data = await res.json();
+            if (data.success && data.notes) {
+              setRecordings(prev => prev.map(r => r.id === tempId ? {
+                ...r,
+                transcript: data.notes,
+                notes: data.notes,
+                processing: false
+              } : r));
+            } else {
+              throw new Error(data.error || "Failed processing audio.");
             }
+          } catch (err: any) {
+            console.error(err);
+            setRecordings(prev => prev.map(r => r.id === tempId ? {
+              ...r,
+              transcript: `Transcription/Notes failed: ${err.message || err}`,
+              processing: false
+            } : r));
           }
         };
-        
-        recognitionRef.current = recognition;
-        recognition.start();
-      }
+      };
 
       const res = await fetch("/api/record/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ label: "Lecture Recording" }),
+        body: JSON.stringify({ label: recordMode === "zoom" ? "Zoom Session" : "Lecture Recording" }),
       });
       const data = await res.json();
       if (data.success) {
@@ -193,7 +265,7 @@ function RecordingWidget() {
         setTimerRefVal(t);
       }
     } catch (err) {
-      alert("Failed to access microphone. Please ensure permissions are granted.");
+      alert("Failed to initiate audio capture. Ensure microphone and system sharing permissions are granted.");
       console.error(err);
     }
   };
@@ -205,13 +277,6 @@ function RecordingWidget() {
     
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
-    }
-
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch {}
-      recognitionRef.current = null;
     }
 
     if (sessionId) {
@@ -246,6 +311,7 @@ function RecordingWidget() {
           transcript: rec.transcript,
           provider: settings.provider,
           apiKey: settings.apiKey,
+          model: settings.model,
         }),
       });
       const data = await res.json();
@@ -309,20 +375,32 @@ function RecordingWidget() {
     <div className="space-y-4">
       <BrutalCard className={`p-4 ${recording ? "border-terracotta bg-terracottaLight/20 shadow-brutal-accent" : ""}`}>
         <h3 className="section-label mb-3">LECTURE RECORDER</h3>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           {recording ? (
             <>
               <div className="w-3 h-3 bg-terracotta border-2 border-terracottaDark animate-pulse" />
-              <span className="font-mono text-sm font-bold">REC {mins}:{secs}</span>
-              <BrutalButton onClick={stopRecording} className="ml-auto">
+              <span className="font-mono text-sm font-bold">
+                REC ({recordMode === "zoom" ? "ZOOM + MIC" : "MIC ONLY"}) {mins}:{secs}
+              </span>
+              <BrutalButton onClick={stopRecording} className="sm:ml-auto">
                 <MicOff className="h-4 w-4 mr-1" /> STOP
               </BrutalButton>
             </>
           ) : (
             <>
-              <Mic className="h-4 w-4 text-inkLight" />
-              <span className="font-mono text-xs text-inkLight">Ready to record class audio</span>
-              <BrutalButton variant="primary" onClick={startRecording} className="ml-auto">
+              <div className="flex items-center gap-2">
+                <Mic className="h-4 w-4 text-inkLight" />
+                <select
+                  value={recordMode}
+                  onChange={(e) => setRecordMode(e.target.value as any)}
+                  className="font-mono text-[10px] font-bold border-2 border-ink bg-surface px-2 py-1 outline-none cursor-pointer focus:bg-surfaceHover"
+                >
+                  <option value="mic">🎙️ MICROPHONE ONLY</option>
+                  <option value="zoom">🖥️ ZOOM / SYSTEM AUDIO + MIC</option>
+                </select>
+              </div>
+              <span className="font-mono text-xs text-inkLight hidden md:inline">Select source and hit record</span>
+              <BrutalButton variant="primary" onClick={startRecording} className="sm:ml-auto">
                 <Mic className="h-4 w-4 mr-1" /> RECORD
               </BrutalButton>
             </>
@@ -339,7 +417,14 @@ function RecordingWidget() {
             <BrutalCard key={rec.id} className="p-3 bg-surface border-ink space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-bold text-sm text-ink">{rec.label}</div>
+                  <div className="font-bold text-sm text-ink flex items-center gap-2">
+                    {rec.label}
+                    {rec.processing && (
+                      <span className="font-mono text-[8px] px-1 py-0.5 border border-amber bg-amber/10 text-amber animate-pulse font-bold">
+                        AI PROCESSING
+                      </span>
+                    )}
+                  </div>
                   <div className="font-mono text-[9px] text-inkLight">
                     {rec.timestamp} // Duration: {rec.duration}
                   </div>
@@ -347,7 +432,8 @@ function RecordingWidget() {
                 <div className="flex gap-1">
                   <button
                     onClick={() => togglePlayPlayback(rec)}
-                    className="p-1.5 border-2 border-ink bg-paper hover:bg-surface active:translate-x-[1px] active:translate-y-[1px]"
+                    disabled={rec.processing}
+                    className="p-1.5 border-2 border-ink bg-paper hover:bg-surface active:translate-x-[1px] active:translate-y-[1px] disabled:opacity-50"
                     title={currentlyPlaying === rec.id ? "Pause" : "Play"}
                   >
                     {currentlyPlaying === rec.id ? (
@@ -357,9 +443,10 @@ function RecordingWidget() {
                     )}
                   </button>
                   <a
-                    href={rec.url}
+                    href={rec.processing ? "#" : rec.url}
+                    onClick={(e) => rec.processing && e.preventDefault()}
                     download={`nexusdesk-lecture-${rec.id}.webm`}
-                    className="p-1.5 border-2 border-ink bg-paper hover:bg-surface active:translate-x-[1px] active:translate-y-[1px] flex items-center justify-center"
+                    className={`p-1.5 border-2 border-ink bg-paper hover:bg-surface active:translate-x-[1px] active:translate-y-[1px] flex items-center justify-center ${rec.processing ? "opacity-50 cursor-not-allowed" : ""}`}
                     title="Download File"
                   >
                     <Download className="h-3 w-3 text-ink" />
@@ -373,7 +460,7 @@ function RecordingWidget() {
                   </button>
                   <button
                     onClick={() => generateNotes(rec)}
-                    disabled={generatingNotesId === rec.id}
+                    disabled={generatingNotesId === rec.id || rec.processing}
                     className="p-1.5 border-2 border-ink bg-paper hover:bg-surface active:translate-x-[1px] active:translate-y-[1px] flex items-center justify-center text-ink disabled:opacity-50"
                     title="Generate Doc Notes"
                   >
@@ -385,7 +472,8 @@ function RecordingWidget() {
                   </button>
                   <button
                     onClick={() => toggleTranscript(rec.id)}
-                    className={`p-1.5 border-2 border-ink text-ink font-bold hover:bg-surface active:translate-x-[1px] active:translate-y-[1px] flex items-center gap-1 ${rec.showTranscript ? "bg-sageLight" : "bg-paper"}`}
+                    disabled={rec.processing}
+                    className={`p-1.5 border-2 border-ink text-ink font-bold hover:bg-surface active:translate-x-[1px] active:translate-y-[1px] flex items-center gap-1 disabled:opacity-50 ${rec.showTranscript ? "bg-sageLight" : "bg-paper"}`}
                     title="Transcribe Notes"
                   >
                     <Sparkles className="h-3 w-3 text-amber font-extrabold" />
@@ -403,11 +491,20 @@ function RecordingWidget() {
               {rec.showTranscript && (
                 <div className="p-2 border-2 border-ink bg-paper font-mono text-[10px] text-inkLight leading-relaxed space-y-2">
                   <div className="font-bold border-b border-ink/20 pb-1 text-ink uppercase flex items-center gap-1">
-                    <FileText className="h-3 w-3 text-amber" /> AI Transcription Note:
+                    <Sparkles className="h-3 w-3 text-amber" /> AI Transcription Note:
                   </div>
-                  <div>{rec.transcript}</div>
+                  <div>
+                    {rec.processing ? (
+                      <div className="flex items-center gap-2 text-amber py-2">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Running Cloud Gemini / Local Whisper transcription on the backend...</span>
+                      </div>
+                    ) : (
+                      rec.transcript
+                    )}
+                  </div>
                   
-                  {rec.notes && (
+                  {!rec.processing && rec.notes && (
                     <div className="mt-2 pt-2 border-t border-ink/20 space-y-1">
                       <div className="font-bold text-sage uppercase flex items-center gap-1">
                         <FileText className="h-3 w-3" /> Generated Notes:
@@ -429,7 +526,6 @@ export default function StudentDashboard() {
   const [date, setDate] = useState(new Date());
   const dateStr = format(date, "yyyy-MM-dd");
   const queryClient = useQueryClient();
-  const { isParentView, studentView } = usePersona();
 
   const { data: summary } = useGetDashboardSummary();
   const { data: events = [], isLoading: isEventsLoading } = useListEvents({ date: dateStr });
@@ -461,24 +557,15 @@ export default function StudentDashboard() {
   const pendingTasks = studentTasks.filter(t => t.status !== "DONE");
   const todoPct = studentTasks.length ? Math.round((studentTasks.filter(t => t.status === "DONE").length / studentTasks.length) * 100) : 0;
 
-  const viewLabel = isParentView ? "Child's Progress" : "My Dashboard";
-
   return (
     <div className="p-5 max-w-6xl mx-auto space-y-5">
       <div className="flex items-end justify-between border-b-4 border-ink pb-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            {studentView === "parent" && (
-              <span className="font-mono text-xs font-bold bg-amber text-paper border-2 border-ink px-2 py-0.5">
-                PARENT VIEW
-              </span>
-            )}
-          </div>
           <h1 className="text-4xl font-heading font-extrabold uppercase tracking-tighter">
-            {isParentView ? "Child's Command Center" : "Command Center"}
+            Command Center
           </h1>
           <p className="font-mono text-sm text-inkLight mt-1">
-            {isParentView ? "PARENT // TRACKING_PROGRESS" : "STUDENT // ACADEMIC_DASHBOARD"}
+            STUDENT // ACADEMIC_DASHBOARD
           </p>
         </div>
         <div className="font-mono text-sm font-bold border-2 border-ink px-3 py-1 bg-surface">
@@ -490,7 +577,7 @@ export default function StudentDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <BrutalCard className="flex flex-col justify-between">
             <span className="font-mono text-xs font-bold text-inkLight">
-              {isParentView ? "TODAY'S CLASSES" : "TODAY'S CLASSES"}
+              TODAY'S CLASSES
             </span>
             <div className="text-3xl font-mono font-bold mt-2">{summary.todayEventCount}</div>
             <div className="flex gap-2 mt-2 flex-wrap">
@@ -509,7 +596,7 @@ export default function StudentDashboard() {
 
           <BrutalCard className="flex flex-col justify-between">
             <span className="font-mono text-xs font-bold text-inkLight">
-              {isParentView ? "PENDING TASKS" : "PENDING TASKS"}
+              PENDING TASKS
             </span>
             <div className="text-3xl font-mono font-bold mt-2 text-amber">
               {pendingTasks.length}
@@ -600,7 +687,7 @@ export default function StudentDashboard() {
 
           <BrutalCard>
             <h3 className="section-label mb-3">
-              {isParentView ? "CHILD'S HOMEWORK CHECKLIST" : "HOMEWORK CHECKLIST"}
+              HOMEWORK CHECKLIST
             </h3>
             <div className="space-y-2 max-h-[200px] overflow-y-auto">
               {pendingTasks.slice(0, 8).map(task => (

@@ -7,8 +7,8 @@ const router = Router();
 
 const OLLAMA_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 
-async function callOllama(prompt: string, base64Image?: string): Promise<string> {
-  const model = base64Image ? "llama3.2-vision" : "llama3";
+async function callOllama(prompt: string, modelOverride?: string, base64Image?: string): Promise<string> {
+  const model = modelOverride || (base64Image ? "llama3.2-vision" : "llama3");
   const cleanImage = base64Image ? base64Image.replace(/^data:image\/\w+;base64,/, "") : undefined;
 
   const response = await fetch(`${OLLAMA_URL}/api/generate`, {
@@ -29,7 +29,12 @@ async function callOllama(prompt: string, base64Image?: string): Promise<string>
   return data.response.trim();
 }
 
-async function callGemini(prompt: string, apiKey: string, base64Image?: string): Promise<string> {
+async function callGemini(
+  prompt: string,
+  apiKey: string,
+  base64Image?: string,
+  responseMimeType: "text/plain" | "application/json" = "text/plain"
+): Promise<string> {
   const models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro"];
   let lastError: Error | null = null;
 
@@ -68,7 +73,7 @@ async function callGemini(prompt: string, apiKey: string, base64Image?: string):
           body: JSON.stringify({
             contents: [{ parts }],
             generationConfig: {
-              responseMimeType: "application/json",
+              responseMimeType,
               temperature: 0.1,
             },
           }),
@@ -188,7 +193,7 @@ ${rawText}
 }
 
 router.post("/ingest", async (req, res): Promise<void> => {
-  const { rawText, sourceType, semesterId, provider, apiKey, scanMode, image } = req.body;
+  const { rawText, sourceType, semesterId, provider, apiKey, scanMode, image, model } = req.body;
   if (!rawText && !image) {
     res.status(400).json({ error: "rawText or image required" });
     return;
@@ -432,16 +437,34 @@ router.post("/ingest", async (req, res): Promise<void> => {
         req.log.warn(`Lemma API Server connection failed: ${err.message || err}. Falling back to inline agent parser.`);
         if (geminiApiKey) {
           req.log.info("Lemma Fallback: Running prompt on Google Gemini...");
-          rawResponse = await callGemini(prompt, geminiApiKey, image);
+          rawResponse = await callGemini(prompt, geminiApiKey, image, "application/json");
         } else {
           req.log.info("Lemma Fallback: Running prompt on local Ollama...");
-          rawResponse = await callOllama(prompt, image);
+          try {
+            rawResponse = await callOllama(prompt, model, image);
+          } catch (ollamaErr: any) {
+            req.log.warn(`Lemma Fallback: Ollama failed: ${ollamaErr.message || ollamaErr}. Trying Gemini as ultimate fallback...`);
+            if (geminiApiKey) {
+              rawResponse = await callGemini(prompt, geminiApiKey, image, "application/json");
+            } else {
+              throw new Error(`Lemma Fallback: Ollama failed (${ollamaErr.message || ollamaErr}) and no Gemini API key was found.`);
+            }
+          }
         }
       }
     } else if (llmProvider === "antigravity") {
-      rawResponse = await callGemini(prompt, geminiApiKey!, image);
+      rawResponse = await callGemini(prompt, geminiApiKey!, image, "application/json");
     } else {
-      rawResponse = await callOllama(prompt, image);
+      try {
+        rawResponse = await callOllama(prompt, model, image);
+      } catch (ollamaErr: any) {
+        req.log.warn(`Ollama parsing failed: ${ollamaErr.message || ollamaErr}. Laptop may not be powerful enough. Falling back to Gemini...`);
+        if (geminiApiKey) {
+          rawResponse = await callGemini(prompt, geminiApiKey, image, "application/json");
+        } else {
+          throw new Error(`Ollama parsing failed (${ollamaErr.message || ollamaErr}) and no Gemini API key was found for fallback.`);
+        }
+      }
     }
 
   } catch (err: any) {
@@ -905,7 +928,7 @@ router.post("/ingest", async (req, res): Promise<void> => {
 });
 
 router.post("/record/notes", async (req, res): Promise<void> => {
-  const { transcript, provider, apiKey } = req.body;
+  const { transcript, provider, apiKey, model } = req.body;
   if (!transcript) {
     res.status(400).json({ error: "Transcript is required" });
     return;
@@ -963,15 +986,33 @@ ${transcript}`;
       } catch (err: any) {
         req.log.warn(`Lemma API Server connection failed: ${err.message || err}. Falling back to inline notes generator.`);
         if (geminiApiKey) {
-          notes = await callGemini(prompt, geminiApiKey);
+          notes = await callGemini(prompt, geminiApiKey, undefined, "text/plain");
         } else {
-          notes = await callOllama(prompt);
+          try {
+            notes = await callOllama(prompt, model);
+          } catch (ollamaErr: any) {
+            req.log.warn(`Lemma Fallback: Ollama failed to generate notes: ${ollamaErr.message || ollamaErr}. trying Gemini as ultimate fallback...`);
+            if (geminiApiKey) {
+              notes = await callGemini(prompt, geminiApiKey, undefined, "text/plain");
+            } else {
+              throw new Error(`Lemma Fallback: Ollama failed (${ollamaErr.message || ollamaErr}) and no Gemini API key was found.`);
+            }
+          }
         }
       }
     } else if (llmProvider === "antigravity") {
-      notes = await callGemini(prompt, geminiApiKey!);
+      notes = await callGemini(prompt, geminiApiKey!, undefined, "text/plain");
     } else {
-      notes = await callOllama(prompt);
+      try {
+        notes = await callOllama(prompt, model);
+      } catch (ollamaErr: any) {
+        req.log.warn(`Ollama note-taking failed: ${ollamaErr.message || ollamaErr}. Laptop may not be powerful enough. Falling back to Gemini...`);
+        if (geminiApiKey) {
+          notes = await callGemini(prompt, geminiApiKey, undefined, "text/plain");
+        } else {
+          throw new Error(`Ollama note-taking failed (${ollamaErr.message || ollamaErr}) and no Gemini API key was found for fallback.`);
+        }
+      }
     }
 
     res.json({

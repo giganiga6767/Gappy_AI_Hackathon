@@ -8,7 +8,7 @@ import { SettingsModal, getConnectivityStatus } from "@/components/settings/Sett
 
 export function TopBar() {
   const { user, logout } = useAuth();
-  const { mode, toggleMode, isStudent, studentView, setStudentView } = usePersona();
+  const { mode, toggleMode } = usePersona();
   const { status: wsStatus } = useWebSocket();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const connectivity = getConnectivityStatus();
@@ -28,28 +28,6 @@ export function TopBar() {
           >
             {isPro ? "PROFESSIONAL WORKSPACE" : "STUDENT WORKSPACE"}
           </div>
-
-          {isStudent && (
-            <div className="flex items-center border-2 border-ink overflow-hidden shadow-brutal-sm">
-              <button
-                onClick={() => setStudentView("student")}
-                className={`font-mono text-[10px] font-bold px-2 py-1.5 transition-colors ${
-                  studentView === "student" ? "bg-sage text-paper" : "bg-surface text-ink hover:bg-surfaceHover"
-                }`}
-              >
-                STUDENT VIEW
-              </button>
-              <div className="w-[2px] h-5 bg-ink" />
-              <button
-                onClick={() => setStudentView("parent")}
-                className={`font-mono text-[10px] font-bold px-2 py-1.5 transition-colors ${
-                  studentView === "parent" ? "bg-amber text-paper" : "bg-surface text-ink hover:bg-surfaceHover"
-                }`}
-              >
-                PARENT VIEW
-              </button>
-            </div>
-          )}
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">

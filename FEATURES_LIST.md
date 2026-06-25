@@ -1,58 +1,98 @@
-# 📋 NexusDesk: Completed Features List
-Here is a clean, bullet-point list of all the completed and fully functional features in **NexusDesk** for our hackathon submission. Teammates can use this list directly for write-ups or presentation slides.
+# 📋 NexusDesk: Complete Features List & Architecture Specification
+
+This document provides a comprehensive, segregated, and point-wise list of all fully functional features implemented in **NexusDesk** for the hackathon submission. It details our unique differentiators, local-first workflows, and advanced agentic architecture.
+
+> [!IMPORTANT]
+> **Lemma powers the TriageAgent + event bus for autonomous routing and unblocking.**
 
 ---
 
-### 🧠 1. LLM Cognitive Ingestion Engine
-* **Universal Ingest Dropzone:** drag-and-drop or copy-paste timetables, syllabi, or schedules.
-* **Timetable Screenshot Ingest:** supports uploading images/screenshots of timetables.
-* **Automatic DB Population:** automatically creates semesters, courses, weekly lecture events, calendar events, and homework tasks in the database.
-* **Multi-LLM Provider Support:** selectable options in the Settings panel for **Google Gemini**, **Ollama (local)**, and **Lemma SDK (Agentic)**.
-* **Lemma SDK Fallback:** logs the SDK execution attempt and falls back to Gemini/Ollama if the local Lemma server isn't running, guaranteeing it never crashes.
+## 🤖 I. Advanced Agentic Architecture (Lemma SDK Integration)
 
-### 🎙️ 2. Live Audio Recorder & Speech Parser
-* **Microphone Capture:** records actual mic audio using the browser's `MediaRecorder` API.
-* **Web Speech Live Transcription:** uses the native **HTML5 Web Speech API** to transcribe your voice *live* while recording (requires zero API keys).
-* **Session Persistence:** all recordings, titles, transcripts, and notes are saved to `localStorage` (survives browser refresh).
-* **Session Renaming:** rename any recording inline.
-* **Playback & Download:** play recording audio directly in the browser or download the `.webm` file.
+NexusDesk utilizes the **Lemma SDK** to run complex, multi-step, context-aware, event-driven agents and workflows:
 
-### 📝 3. AI Document Notes Generator
-* **One-Click Doc Notes:** clicking the document generator button (file icon) takes the transcript and formats it into structured Markdown notes.
-* **Auto-File Download:** triggers an immediate download of the `<session-name>-notes.md` file.
-* **UI Preview:** renders the generated markdown notes directly underneath the transcript card in the recordings list.
+* **The TriageAgent (Autonomous Routing):**
+  * Spawns a Lemma Agent (`TriageAgent`) to process raw voice transcripts uploaded by recorders or created in the workspace.
+  * Context-aware routing: Automatically classifies text into "Academic" or "Professional" payloads based on vocabulary (course codes, syllabus info vs sprint logs, client terms).
+  * Automatically creates fully populated database records matching PostgreSQL schema rules in the appropriate datastore.
+* **The Self-Healing Solution Architect (Event Bus Unblocking):**
+  * Monitors the global Event Bus. When a Sprint task state changes to `"Blocked"`, the bus triggers the `EnterpriseSolutionArchitect` agent.
+  * The agent analyzes the blocker context (e.g., dependency error, missing specification) and performs a multi-step query.
+  * Generates 2-4 concrete, structured solutions—including complete copy-pasteable **code snippets**, ITIL/Agile SOP templates, framework suggestions, and StackOverflow/GitHub reference URLs.
+  * Writes the solutions back into the datastore under the task's AI Solution board.
+* **Proactive Study Copilot Agent:**
+  * Runs on a background cron scheduler that triggers daily at 8:00 AM.
+  * Analyzes course calendars, active grades, and upcoming assignment/exam tasks.
+  * Automatically compiles structured study plans, generates reading checklists, and retrieves recommended YouTube/textbook resource links dynamically.
+* **Directory File System Watcher:**
+  * Monitors a designated folder `/transcripts` using `chokidar` to ingest new records on file creation, feeding them straight into the Lemma `TriageAgent`.
 
-### 📊 4. Attendance Heatmap & 75% Guard (Student Mode)
-* **75% Attendance Guard:** color-coded indicators warning if attendance drops below the NITK 75% minimum threshold.
-* **Risk Calculator:** tells you exactly how many classes you can safely skip, or how many consecutive classes you must attend to recover.
-* **Attendance Heatmap Calendar:** custom calendar rendering your monthly attendance status (Safe / Danger / Warn) in a high-contrast matrix.
-* **Student vs. Parent Views:** top bar navigation to switch between the Student workspace and a read-only Parent dashboard view.
+---
 
-### 📅 5. Vertical Timetable Timeline
-* **Fluid Grid:** renders an hourly timeline matching the selected day.
-* **Live Red Cursor:** tracks and displays the current time relative to your scheduled lectures.
-* **Quick Log Toggle:** mark classes as "Attended" or "Missed" with one click to dynamically update attendance stats.
+## 🎨 II. Unique Differentiators (Attendance Guard, Multi-Persona, Local-First)
 
-### 📋 6. Kanban Task Board
-* **Academic & ECE-focused Columns:** tracks tasks under categories like `ACADEMICS`, `HARDWARE_DEV`, `ROUTINE`, and `PERSONAL`.
-* **Priority Metrics:** supports assigning priorities: `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL`.
-* **Database Synced:** fully synced with PostgreSQL (mutates state instantly).
+Unlike standard academic planners, NexusDesk has a tailored ECE-academic footprint combined with local-first system recording:
 
-### 🛠️ 7. Hardware Project Tracker
-* **Hardware Lifecycle Phases:** tracks ECE prototyping phases (Simulation, Breadboarding, Schematic Capture, PCB Manufacturing, Testing/Assembly).
-* **Parts Inventory Checklist:** checklists to log required hardware components (microcontrollers, NE555 timers, op-amps, etc.).
-* **Project Milestones & Logs:** tracks milestone due dates and lets you add developer logs.
+### 1. The 75% Attendance Guard & Risk Engine
+* **Rule-Based Analytics Guard:**
+  * Computes live attendance percentages for all courses, mapping them against the standard college 75% minimum attendance requirement (or any other custom threshold).
+* **Skipping Allowed & Recovery Calculator:**
+  * Tells the student exactly how many consecutive classes they can safely skip before dropping below 75%.
+  * If the student is already in the danger zone (< 75%), the system calculates the exact number of consecutive classes they *must* attend to recover to safety.
+* **High-Contrast Attendance Heatmap:**
+  * Renders monthly attendance records as a dense, high-contrast visual matrix for scannability.
+* **One-Click Quick Log Timeline:**
+  * Renders an hourly grid with a live red line showing class schedules. Allows logging attendance with a single click, instantly recalculating all percentages and danger-zone metrics.
 
-### 🧮 8. CGPA/SGPA Simulator
-* **Interactive Simulator:** calculate your GPA based on course credit weightings.
-* **Grade Targets:** set target CGPAs and calculate grades needed in upcoming courses.
+### 2. Dual-Persona Workspace
+* **Academic Student Workspace:**
+  * Displays attendance metrics, CGPA/SGPA credit target simulators, vertical timetables, and academic Kanban boards.
+* **Professional Freelancer Workspace:**
+  * Switches persona to expose client sprint boards, a billable hours logging system, and meeting recorders.
+  * Removes legacy rounded elements and "Parent Views" for a modern, muted Brutalist layout (`0px` border-radius, flat ink lines, and Space Grotesk fonts).
 
-### 🔄 9. Dual-Workspace Mode
-* **Student Workspace:** access to courses, attendance metrics, CGPA simulator, and timetables.
-* **Professional Workspace:** switch workspace to access a freelance billable hours log, sprint trackers, and the meeting/standup recorder.
+### 3. Local-First Ollama & Desktop Integration
+* **Local LLM Flexibility:**
+  * Integrated a local Ollama service provider where the user can choose and type in **any** local model name they want (e.g., `llama3.2`, `mistral`, `gemma2`, `qwen2.5:7b`).
+* **Resilient Gemini Fallback Guard:**
+  * Specifically designed for lower-spec laptops. If the local model fails to load, times out, or throws an error, the system catches the exception and automatically routes the prompt to **Google Gemini** using a configured fallback key (or env key), guaranteeing **100% functionality uptime**.
+  * Accessible settings display an optional "Gemini API Key (Optional Fallback)" field alongside the local model name.
+* **Local Desktop Saving & Archiving:**
+  * Automatically hooks into the local operating system to save assets:
+    * **`~/Desktop/classrecordings/`**: Archives raw recorded `.webm` audio files.
+    * **`~/Desktop/notes/`**: Auto-saves styled, professional Microsoft Word `.docx` documents containing compiled class summaries.
 
-### 🤖 10. Agentic Event-Driven Backend Architecture (New!)
-* **Triage Routing Agent:** Spawns a Lemma Agent (`TriageAgent`) to parse, classify (academic/professional), and write raw file transcripts to the correct datastores.
-* **Proactive Study Copilot:** Monitors deadlines daily using a cron job, generating tailored study schedules and high-quality YouTube/textbook resource lists for the student's task.
-* **Self-Healing Solution Architect:** Intercepts `'Blocked'` task changes on an Event Bus, generating 2-4 technical/process solutions and code snippets automatically.
-* **File System Ingestion Watcher:** Monitors a `/transcripts` directory using `chokidar` to ingest new records on file creation.
+---
+
+## 🎙️ III. Live Meeting & Class Recorder Pipeline
+
+* **Multi-Track Web Audio Mixer:**
+  * Records ambient room conversations or online video lectures directly.
+  * Option to record **Microphone Only** or capture mixed **Zoom / System Audio + Microphone** simultaneously.
+* **Live Speech Transcription:**
+  * Integrates the browser-native HTML5 Web Speech API (`SpeechRecognition`) for real-time transcript streaming. Requires no external cloud connections or API keys to render spoken words live.
+* **Structured Markdown Notes Generator:**
+  * Takes the voice transcript and transforms it into beautifully structured summaries complete with headings, key takeaways, and action items.
+* **Microsoft Word (`.docx`) Direct Compiler:**
+  * Uses a Python script utility (`gemini_note_taker.py` with `--md-only` compilation) to automatically compile raw markdown notes into professional executive Word documents on the fly.
+* **Local Persistence:**
+  * Auto-saves all recordings, audio playback links, transcripts, and notes to `localStorage` so data is never lost on refresh.
+
+---
+
+## 📅 IV. Task & Project Management
+
+* **Kanban Task Board:**
+  * Segregated task columns matching ECE work categories: `ACADEMICS`, `HARDWARE_DEV`, `ROUTINE`, and `PERSONAL`.
+  * Support for priority labels (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`).
+* **ECE Hardware Lifecycle Tracker:**
+  * Custom timeline designed to track hardware projects through prototyping phases:
+    1. Simulation
+    2. Breadboarding
+    3. Schematic Capture
+    4. PCB Manufacturing
+    5. Testing & Assembly
+* **Parts Inventory Checklist:**
+  * Tracks microcontroller pins, capacitors, op-amps, NE555 timers, and other components directly within the project board.
+* **CGPA & SGPA Simulator:**
+  * Simulates semester grade outcomes and calculates required grades in future courses to hit target CGPAs.

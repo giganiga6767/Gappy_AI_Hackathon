@@ -121,7 +121,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
             <h3 className="font-mono text-xs font-bold uppercase tracking-widest text-inkLight border-b-2 border-ink pb-2 mb-4">
               Model
             </h3>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 mb-3">
               {PROVIDER_MODELS[settings.provider].map(model => (
                 <button
                   key={model}
@@ -136,12 +136,24 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                 </button>
               ))}
             </div>
+            <div className="space-y-1">
+              <label className="font-mono text-[9px] font-bold text-inkLight uppercase">
+                Or Enter Custom Model Name:
+              </label>
+              <input
+                type="text"
+                value={settings.model}
+                onChange={e => setSettings(prev => ({ ...prev, model: e.target.value }))}
+                placeholder="e.g. mistral, qwen2.5:7b, gemma2"
+                className="w-full border-2 border-ink bg-paper p-2 font-mono text-xs focus:outline-none focus:bg-surface"
+              />
+            </div>
           </div>
 
-          {settings.provider !== "ollama" && settings.provider !== "lemma" && (
+          {settings.provider !== "lemma" && (
             <div>
               <h3 className="font-mono text-xs font-bold uppercase tracking-widest text-inkLight border-b-2 border-ink pb-2 mb-4">
-                API Key
+                {settings.provider === "ollama" ? "Gemini API Key (Optional Fallback)" : "API Key"}
               </h3>
               <div className="relative">
                 <input
@@ -149,7 +161,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                   value={settings.apiKey}
                   onChange={e => setSettings(prev => ({ ...prev, apiKey: e.target.value }))}
                   placeholder={
-                    settings.provider === "gemini" ? "AIzaSy..." :
+                    settings.provider === "gemini" || settings.provider === "ollama" ? "AIzaSy..." :
                     settings.provider === "openai" ? "sk-..." :
                     "sk-ant-..."
                   }
@@ -164,7 +176,15 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                 </button>
               </div>
               <p className="font-mono text-[10px] text-inkFaint mt-2 leading-relaxed">
-                Stored locally in browser. If blank, the server's env key ({settings.provider === "gemini" ? "GEMINI_API_KEY" : settings.provider === "openai" ? "OPENAI_API_KEY" : "ANTHROPIC_API_KEY"}) is used automatically.
+                {settings.provider === "ollama" ? (
+                  "If your laptop isn't powerful enough to run local Ollama models, configure a free Google Gemini API key here as a fallback."
+                ) : (
+                  `Stored locally in browser. If blank, the server's env key (${
+                    settings.provider === "gemini" ? "GEMINI_API_KEY" :
+                    settings.provider === "openai" ? "OPENAI_API_KEY" :
+                    "ANTHROPIC_API_KEY"
+                  }) is used automatically.`
+                )}
               </p>
             </div>
           )}

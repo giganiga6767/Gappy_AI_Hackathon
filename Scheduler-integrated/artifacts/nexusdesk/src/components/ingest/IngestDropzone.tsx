@@ -292,9 +292,10 @@ export function IngestDropzone() {
         rawText: text,
         provider: settings.provider === "ollama" ? "ollama" : settings.provider === "lemma" ? "lemma" : "antigravity",
         apiKey: settings.provider !== "ollama" && settings.provider !== "lemma" ? settings.apiKey || undefined : undefined,
+        model: settings.model,
         scanMode: "universal",
         image: image || undefined,
-      },
+      } as any,
     });
   };
 
@@ -310,6 +311,7 @@ export function IngestDropzone() {
           rawText: DEMO_PAYLOAD,
           provider: settings.provider === "ollama" ? "ollama" : settings.provider === "lemma" ? "lemma" : "antigravity",
           apiKey: settings.provider !== "ollama" && settings.provider !== "lemma" ? settings.apiKey || undefined : undefined,
+          model: settings.model,
           scanMode: "universal",
         }),
       });
