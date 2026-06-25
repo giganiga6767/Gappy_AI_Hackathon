@@ -3,7 +3,7 @@ import { Settings, X, Eye, EyeOff } from "lucide-react";
 import { BrutalCard } from "@/components/shared/BrutalCard";
 import { BrutalButton } from "@/components/shared/BrutalButton";
 
-export type LLMProvider = "gemini" | "openai" | "anthropic" | "ollama";
+export type LLMProvider = "gemini" | "openai" | "anthropic" | "ollama" | "lemma";
 
 export interface LLMSettings {
   provider: LLMProvider;
@@ -16,6 +16,7 @@ const PROVIDER_MODELS: Record<LLMProvider, string[]> = {
   openai: ["gpt-4o", "gpt-4o-mini"],
   anthropic: ["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"],
   ollama: ["llama3", "llama3.2-vision"],
+  lemma: ["lemma-triage-agent"],
 };
 
 const PROVIDER_LABELS: Record<LLMProvider, string> = {
@@ -23,6 +24,7 @@ const PROVIDER_LABELS: Record<LLMProvider, string> = {
   openai: "OpenAI GPT",
   anthropic: "Anthropic Claude",
   ollama: "Ollama (Local)",
+  lemma: "Lemma SDK (Agentic)",
 };
 
 function loadSettings(): LLMSettings {
@@ -136,7 +138,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
             </div>
           </div>
 
-          {settings.provider !== "ollama" && (
+          {settings.provider !== "ollama" && settings.provider !== "lemma" && (
             <div>
               <h3 className="font-mono text-xs font-bold uppercase tracking-widest text-inkLight border-b-2 border-ink pb-2 mb-4">
                 API Key

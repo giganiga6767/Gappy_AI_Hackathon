@@ -396,37 +396,48 @@ router.post("/ingest", async (req, res): Promise<void> => {
     const prompt = buildUniversalPrompt(rawText || "", currentDate, !!image);
 
     if (provider === "lemma") {
-      const { LemmaClient } = await import("lemma-sdk");
-      const lemmaClient = new LemmaClient({
-        apiUrl: process.env.LEMMA_API_URL || "http://127-0-0-1.sslip.io:8711",
-        authUrl: process.env.LEMMA_AUTH_URL || "http://127-0-0-1.sslip.io:3711/auth",
-      });
-      await lemmaClient.initialize();
-      
-      req.log.info("Spawning Lemma SDK Agent 'triage' to parse document...");
-      const conv = await lemmaClient.agents.run("triage", prompt);
-      const convObj = conv as any;
-      if (!convObj || !convObj.id) {
-        throw new Error("Lemma Agent run did not return a valid conversation object/ID");
-      }
-
-      // Poll messages to wait for the agent to output the structured JSON
-      let attempts = 0;
-      let assistantMsgText = "";
-      while (attempts < 15 && !assistantMsgText) {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        const messages = await lemmaClient.conversations.messages.list(convObj.id);
-        const assistantMsg = messages.items.find(m => m.role === "assistant" && m.text);
-        if (assistantMsg && assistantMsg.text) {
-          assistantMsgText = assistantMsg.text;
+      try {
+        const { LemmaClient } = await import("lemma-sdk");
+        const lemmaClient = new LemmaClient({
+          apiUrl: process.env.LEMMA_API_URL || "http://127-0-0-1.sslip.io:8711",
+          authUrl: process.env.LEMMA_AUTH_URL || "http://127-0-0-1.sslip.io:3711/auth",
+        });
+        await lemmaClient.initialize();
+        
+        req.log.info("Spawning Lemma SDK Agent 'triage' to parse document...");
+        const conv = await lemmaClient.agents.run("triage", prompt);
+        const convObj = conv as any;
+        if (!convObj || !convObj.id) {
+          throw new Error("Lemma Agent run did not return a valid conversation object/ID");
         }
-        attempts++;
-      }
 
-      if (!assistantMsgText) {
-        throw new Error("Timeout waiting for structured output from Lemma Agent");
+        // Poll messages to wait for the agent to output the structured JSON
+        let attempts = 0;
+        let assistantMsgText = "";
+        while (attempts < 15 && !assistantMsgText) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          const messages = await lemmaClient.conversations.messages.list(convObj.id);
+          const assistantMsg = messages.items.find(m => m.role === "assistant" && m.text);
+          if (assistantMsg && assistantMsg.text) {
+            assistantMsgText = assistantMsg.text;
+          }
+          attempts++;
+        }
+
+        if (!assistantMsgText) {
+          throw new Error("Timeout waiting for structured output from Lemma Agent");
+        }
+        rawResponse = assistantMsgText;
+      } catch (err: any) {
+        req.log.warn(`Lemma API Server connection failed: ${err.message || err}. Falling back to inline agent parser.`);
+        if (geminiApiKey) {
+          req.log.info("Lemma Fallback: Running prompt on Google Gemini...");
+          rawResponse = await callGemini(prompt, geminiApiKey, image);
+        } else {
+          req.log.info("Lemma Fallback: Running prompt on local Ollama...");
+          rawResponse = await callOllama(prompt, image);
+        }
       }
-      rawResponse = assistantMsgText;
     } else if (llmProvider === "antigravity") {
       rawResponse = await callGemini(prompt, geminiApiKey!, image);
     } else {

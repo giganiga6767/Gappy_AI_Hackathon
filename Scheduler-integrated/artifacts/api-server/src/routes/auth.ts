@@ -28,8 +28,9 @@ router.get("/auth/google/callback", (req, res) => {
     avatarInitials: "GU",
     role: "google",
   };
+  const clientUrl = `http://localhost:${process.env.PORT_FRONTEND || "19211"}`;
   const encoded = encodeURIComponent(JSON.stringify(user));
-  res.redirect(`/#auth=google&user=${encoded}`);
+  res.redirect(`${clientUrl}/#auth=google&user=${encoded}`);
 });
 
 router.get("/auth/github", (_req, res) => {
@@ -57,8 +58,9 @@ router.get("/auth/github/callback", (req, res) => {
     avatarInitials: "GH",
     role: "github",
   };
+  const clientUrl = `http://localhost:${process.env.PORT_FRONTEND || "19211"}`;
   const encoded = encodeURIComponent(JSON.stringify(user));
-  res.redirect(`/#auth=github&user=${encoded}`);
+  res.redirect(`${clientUrl}/#auth=github&user=${encoded}`);
 });
 
 router.post("/auth/guest", (_req, res) => {

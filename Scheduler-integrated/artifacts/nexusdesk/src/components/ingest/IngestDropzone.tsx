@@ -290,8 +290,8 @@ export function IngestDropzone() {
     ingest.mutate({
       data: {
         rawText: text,
-        provider: settings.provider === "ollama" ? "ollama" : "antigravity",
-        apiKey: settings.provider !== "ollama" ? settings.apiKey || undefined : undefined,
+        provider: settings.provider === "ollama" ? "ollama" : settings.provider === "lemma" ? "lemma" : "antigravity",
+        apiKey: settings.provider !== "ollama" && settings.provider !== "lemma" ? settings.apiKey || undefined : undefined,
         scanMode: "universal",
         image: image || undefined,
       },
@@ -308,8 +308,8 @@ export function IngestDropzone() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           rawText: DEMO_PAYLOAD,
-          provider: settings.provider === "ollama" ? "ollama" : "antigravity",
-          apiKey: settings.provider !== "ollama" ? settings.apiKey || undefined : undefined,
+          provider: settings.provider === "ollama" ? "ollama" : settings.provider === "lemma" ? "lemma" : "antigravity",
+          apiKey: settings.provider !== "ollama" && settings.provider !== "lemma" ? settings.apiKey || undefined : undefined,
           scanMode: "universal",
         }),
       });
