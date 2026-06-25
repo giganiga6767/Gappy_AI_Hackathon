@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Link } from "wouter";
 import { format } from "date-fns";
 import { 
   useListTasks,
@@ -541,28 +542,17 @@ export default function ProfessionalDashboard() {
 
   const [billableData, setBillableData] = useState<Array<{ client: string; hours: number; budget: number }>>(() => {
     const saved = localStorage.getItem("pro_billable");
-    return saved ? JSON.parse(saved) : [
-      { client: "Acme", hours: 24, budget: 40 },
-      { client: "TechCo", hours: 18, budget: 30 },
-      { client: "StartX", hours: 12, budget: 20 },
-      { client: "LegacyFin", hours: 8, budget: 15 },
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [trendData, setTrendData] = useState<Array<{ week: string; hours: number }>>(() => {
     const saved = localStorage.getItem("pro_trend");
-    return saved ? JSON.parse(saved) : [
-      { week: "W1", hours: 32 },
-      { week: "W2", hours: 41 },
-      { week: "W3", hours: 28 },
-      { week: "W4", hours: 45 },
-      { week: "W5", hours: 38 },
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [meetingSummary, setMeetingSummary] = useState(() => {
     const saved = localStorage.getItem("pro_summary");
-    return saved || `Sprint 12 retrospective — 3 blockers resolved. Action items: Deploy hotfix v2.3.1 by EOD. QA sign-off on payment module. Client demo scheduled for Jul 1.`;
+    return saved || "";
   });
 
   // UI edit/form states
@@ -900,17 +890,10 @@ export default function ProfessionalDashboard() {
                 </div>
               ))}
               {meetingsList.length === 0 && (
-                <div className="text-center py-6 border-2 border-dashed border-inkFaint space-y-3 bg-surface/30">
+                <div className="text-center py-6 border-2 border-dashed border-inkFaint bg-surface/30">
                   <div className="font-mono text-xs text-inkLight">
-                    NO MEETINGS IN DATABASE
+                    NO MEETINGS SCHEDULED
                   </div>
-                  <BrutalButton
-                    onClick={seedDemoMeetings}
-                    className="text-xs py-1.5 px-3"
-                    disabled={createEventMutation.isPending}
-                  >
-                    {createEventMutation.isPending ? "INITIALIZING..." : "SEED DEMO MEETINGS"}
-                  </BrutalButton>
                 </div>
               )}
             </div>
@@ -975,15 +958,13 @@ export default function ProfessionalDashboard() {
             {projects.length === 0 ? (
               <div className="text-center py-8 border-2 border-dashed border-inkFaint bg-surface/30 space-y-3">
                 <div className="font-mono text-xs text-inkLight">
-                  NO ACTIVE PROJECTS IN DATABASE
+                  NO ACTIVE PROJECTS FOUND
                 </div>
-                <BrutalButton
-                  onClick={seedDemoProject}
-                  className="text-xs py-1.5 px-3"
-                  disabled={createProject.isPending}
-                >
-                  {createProject.isPending ? "INITIALIZING..." : "INITIALIZE DEMO PROJECT"}
-                </BrutalButton>
+                <Link href="/projects">
+                  <BrutalButton className="text-xs py-1.5 px-3">
+                    + NEW PROJECT
+                  </BrutalButton>
+                </Link>
               </div>
             ) : (
               <div className="relative pt-4 pb-2">
