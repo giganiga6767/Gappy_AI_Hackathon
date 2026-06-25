@@ -1,0 +1,3 @@
+- [NexusDesk design system](nexusdesk-design.md) — Muted Neo Brutalist rules: zero radius, no @apply component classes in Tailwind v4, brutal shadows only.
+- [Tailwind v4 @apply restriction](tailwind-v4-apply.md) — @apply in @layer components can only use utilities, NOT other component classes — expand inline.
+- [Drizzle lib stale declarations](drizzle-stale-libs.md) — After adding schema tables, run typecheck:libs before artifact typechecks or you get false "no exported member" errors.
