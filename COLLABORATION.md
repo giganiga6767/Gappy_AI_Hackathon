@@ -35,7 +35,8 @@ The user interface is built on **React + Vite + TailwindCSS (v4)**.
 
 ### 🖥️ The Backend API
 The server is an **Express** app running on Node.
-- **Routes**: [artifacts/api-server/src/routes/](file:///home/niranjan/Desktop/Gappy_AI_Hackathon/Scheduler-integrated/artifacts/api-server/src/routes) contains files for each category of endpoints (e.g., `events.ts`, `tasks.ts`, `courses.ts`, and `ingest.ts`).
+- **Mock/Frontend Server**: [artifacts/api-server/src/routes/](file:///home/niranjan/Desktop/Gappy_AI_Hackathon/Scheduler-integrated/artifacts/api-server/src/routes) contains files for each mock frontend endpoint.
+- **Event-Driven Agentic Backend (New!)**: The [/backend](file:///home/niranjan/Desktop/Gappy_AI_Hackathon/backend) folder contains the full TypeScript implementation of our event-driven workflows, datastores, agents, and scheduler.
 - **AI Document Parsing**: In [ingest.ts](file:///home/niranjan/Desktop/Gappy_AI_Hackathon/Scheduler-integrated/artifacts/api-server/src/routes/ingest.ts), search for `provider === "lemma"` or `provider === "antigravity"` to see how timetables are processed via LLM.
 
 ### 🗄️ Database & Schema

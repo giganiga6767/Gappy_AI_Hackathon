@@ -14,6 +14,7 @@ This document outlines the current state of **NexusDesk**, what features are wor
 4. **Timetable / Syllabus Ingestion:** The AI Dropzone successfully parses text or PDF files, connects to the database via Drizzle ORM, and populates semesters, ECE courses, tasks, and calendar events.
 5. **Attendance Heatmap & Risk Calculator:** Calculates whether ECE students are below the NITK 75% threshold, tracks attended/missed classes, and warns users when they are in the danger zone.
 6. **Muted Neo-Brutalist Design System:** Applied a high-contrast style guide (`0px` border-radius, offset shadows, Space Grotesk / Inter fonts, and high-contrast ink outlines).
+7. **Production-Ready Event-Driven Agentic Backend (New!):** Fully scaffolded `/backend` utilizing the **Lemma SDK (TypeScript)** to run automated datastore management, triaging routing, cron jobs, and blocker unblockers with clean types and no placeholders.
 
 ---
 

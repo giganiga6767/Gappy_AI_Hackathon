@@ -46,15 +46,29 @@ NexusDesk features a high-contrast, tactile design system:
 
 ## 📂 Project Structure
 ```
+├── backend/              # Event-driven agentic Lemma SDK TypeScript Backend
+│   ├── src/datastores/   # Lemma Datastore schemas (Student, Enterprise)
+│   ├── src/agents/       # Agent configurations (Triage, Copilot, Solution Arch)
+│   ├── src/workflows/    # Event & file triggers (Watcher, Cron, Unblocker)
+│   └── src/api/          # REST server endpoints and routing
 ├── artifacts/
-│   ├── api-server/       # Express Backend API server
+│   ├── api-server/       # Express Backend API server (mock/integrated frontend support)
 │   └── nexusdesk/        # React + Vite Frontend application
 ├── lib/
 │   └── db/               # PostgreSQL Database schemas (Drizzle ORM)
 ├── .env.example          # Template environment configurations
 ├── setup.bat             # Single-command setup for Windows
-└── launch.sh             # Launch script for Unix-like systems
+├── launch.sh             # Launch script for Unix-like systems
 ```
+
+### ⚙️ Starting the Agentic Backend
+To launch the newly configured event-driven agentic backend:
+```bash
+cd backend
+npm install
+npm run dev
+```
+*This will spin up the Express API Server on port 4000, start the transcript directory file watcher, activate the daily academic deadline cron job, and register status listeners to unblock tasks.*
 
 ---
 

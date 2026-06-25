@@ -50,3 +50,9 @@ Here is a clean, bullet-point list of all the completed and fully functional fea
 ### 🔄 9. Dual-Workspace Mode
 * **Student Workspace:** access to courses, attendance metrics, CGPA simulator, and timetables.
 * **Professional Workspace:** switch workspace to access a freelance billable hours log, sprint trackers, and the meeting/standup recorder.
+
+### 🤖 10. Agentic Event-Driven Backend Architecture (New!)
+* **Triage Routing Agent:** Spawns a Lemma Agent (`TriageAgent`) to parse, classify (academic/professional), and write raw file transcripts to the correct datastores.
+* **Proactive Study Copilot:** Monitors deadlines daily using a cron job, generating tailored study schedules and high-quality YouTube/textbook resource lists for the student's task.
+* **Self-Healing Solution Architect:** Intercepts `'Blocked'` task changes on an Event Bus, generating 2-4 technical/process solutions and code snippets automatically.
+* **File System Ingestion Watcher:** Monitors a `/transcripts` directory using `chokidar` to ingest new records on file creation.
