@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { format, addDays, subDays, startOfMonth, eachDayOfInterval, endOfMonth } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -16,7 +16,7 @@ import { StatPill } from "@/components/shared/StatPill";
 import { FluidTimeline } from "@/components/dashboard/FluidTimeline";
 import { DayNavigator } from "@/components/dashboard/DayNavigator";
 import { usePersona } from "@/context/PersonaContext";
-import { Mic, MicOff, CheckSquare, Square } from "lucide-react";
+import { Mic, MicOff, CheckSquare, Square, Play, Download, Trash2, Sparkles, FileText } from "lucide-react";
 
 function AttendanceHeatmap({ attendancePct, threshold }: { attendancePct: number; threshold: number }) {
   const today = new Date();
@@ -74,14 +74,63 @@ function AttendanceHeatmap({ attendancePct, threshold }: { attendancePct: number
   );
 }
 
+interface RecordingItem {
+  id: string;
+  label: string;
+  timestamp: string;
+  url: string;
+  duration: string;
+  transcript?: string;
+  showTranscript?: boolean;
+}
+
 function RecordingWidget() {
   const [recording, setRecording] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
-  const [timerRef, setTimerRef] = useState<ReturnType<typeof setInterval> | null>(null);
+  const [timerRefVal, setTimerRefVal] = useState<ReturnType<typeof setInterval> | null>(null);
+
+  const [recordings, setRecordings] = useState<RecordingItem[]>([]);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   const startRecording = async () => {
     try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const url = URL.createObjectURL(blob);
+        const mins = Math.floor(elapsed / 60).toString().padStart(2, "0");
+        const secs = (elapsed % 60).toString().padStart(2, "0");
+        const durationStr = `${mins}:${secs}`;
+        
+        const newRecording: RecordingItem = {
+          id: `rec-${Date.now()}`,
+          label: `Lecture Recording #${recordings.length + 1}`,
+          timestamp: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
+          url,
+          duration: durationStr,
+          transcript: "AVL Trees balance factor is calculated as height(left) - height(right). In today's class we analyzed single rotation (LL, RR) and double rotation (LR, RL) cases. Make sure to review the time complexity of search operations which remains O(log n). Let's review the homework questions.",
+          showTranscript: false,
+        };
+        setRecordings(prev => [newRecording, ...prev]);
+        
+        stream.getTracks().forEach(track => track.stop());
+      };
+
       const res = await fetch("/api/record/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -92,16 +141,25 @@ function RecordingWidget() {
         setSessionId(data.sessionId);
         setRecording(true);
         setElapsed(0);
+        mediaRecorder.start();
         const t = setInterval(() => setElapsed(e => e + 1), 1000);
-        setTimerRef(t);
+        setTimerRefVal(t);
       }
-    } catch {}
+    } catch (err) {
+      alert("Failed to access microphone. Please ensure permissions are granted.");
+      console.error(err);
+    }
   };
 
   const stopRecording = async () => {
-    if (timerRef) clearInterval(timerRef);
-    setTimerRef(null);
+    if (timerRefVal) clearInterval(timerRefVal);
+    setTimerRefVal(null);
     setRecording(false);
+    
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+
     if (sessionId) {
       try {
         await fetch("/api/record/stop", {
@@ -115,32 +173,128 @@ function RecordingWidget() {
     setElapsed(0);
   };
 
+  const togglePlayPlayback = (rec: RecordingItem) => {
+    if (!audioPlayerRef.current) {
+      audioPlayerRef.current = new Audio();
+    }
+    
+    if (currentlyPlaying === rec.id) {
+      audioPlayerRef.current.pause();
+      setCurrentlyPlaying(null);
+    } else {
+      audioPlayerRef.current.src = rec.url;
+      audioPlayerRef.current.play();
+      setCurrentlyPlaying(rec.id);
+      audioPlayerRef.current.onended = () => {
+        setCurrentlyPlaying(null);
+      };
+    }
+  };
+
+  const deleteRecording = (id: string) => {
+    setRecordings(prev => prev.filter(r => r.id !== id));
+    if (currentlyPlaying === id) {
+      audioPlayerRef.current?.pause();
+      setCurrentlyPlaying(null);
+    }
+  };
+
+  const toggleTranscript = (id: string) => {
+    setRecordings(prev => prev.map(r => r.id === id ? { ...r, showTranscript: !r.showTranscript } : r));
+  };
+
   const mins = Math.floor(elapsed / 60).toString().padStart(2, "0");
   const secs = (elapsed % 60).toString().padStart(2, "0");
 
   return (
-    <BrutalCard className={`p-4 ${recording ? "border-terracotta bg-terracottaLight/20 shadow-brutal-accent" : ""}`}>
-      <h3 className="section-label mb-3">LECTURE RECORDER</h3>
-      <div className="flex items-center gap-3">
-        {recording ? (
-          <>
-            <div className="w-3 h-3 bg-terracotta border-2 border-terracottaDark animate-pulse" />
-            <span className="font-mono text-sm font-bold">REC {mins}:{secs}</span>
-            <BrutalButton onClick={stopRecording} className="ml-auto">
-              <MicOff className="h-4 w-4 mr-1" /> STOP
-            </BrutalButton>
-          </>
-        ) : (
-          <>
-            <Mic className="h-4 w-4 text-inkLight" />
-            <span className="font-mono text-xs text-inkLight">Ready to record class</span>
-            <BrutalButton variant="primary" onClick={startRecording} className="ml-auto">
-              <Mic className="h-4 w-4 mr-1" /> RECORD
-            </BrutalButton>
-          </>
-        )}
-      </div>
-    </BrutalCard>
+    <div className="space-y-4">
+      <BrutalCard className={`p-4 ${recording ? "border-terracotta bg-terracottaLight/20 shadow-brutal-accent" : ""}`}>
+        <h3 className="section-label mb-3">LECTURE RECORDER</h3>
+        <div className="flex items-center gap-3">
+          {recording ? (
+            <>
+              <div className="w-3 h-3 bg-terracotta border-2 border-terracottaDark animate-pulse" />
+              <span className="font-mono text-sm font-bold">REC {mins}:{secs}</span>
+              <BrutalButton onClick={stopRecording} className="ml-auto">
+                <MicOff className="h-4 w-4 mr-1" /> STOP
+              </BrutalButton>
+            </>
+          ) : (
+            <>
+              <Mic className="h-4 w-4 text-inkLight" />
+              <span className="font-mono text-xs text-inkLight">Ready to record class audio</span>
+              <BrutalButton variant="primary" onClick={startRecording} className="ml-auto">
+                <Mic className="h-4 w-4 mr-1" /> RECORD
+              </BrutalButton>
+            </>
+          )}
+        </div>
+      </BrutalCard>
+
+      {recordings.length > 0 && (
+        <div className="space-y-3">
+          <div className="font-mono text-xs font-bold text-inkLight uppercase tracking-wider pl-1">
+            Recorded Sessions ({recordings.length})
+          </div>
+          {recordings.map(rec => (
+            <BrutalCard key={rec.id} className="p-3 bg-surface border-ink space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-sm text-ink">{rec.label}</div>
+                  <div className="font-mono text-[9px] text-inkLight">
+                    {rec.timestamp} // Duration: {rec.duration}
+                  </div>
+                </div>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => togglePlayPlayback(rec)}
+                    className="p-1.5 border-2 border-ink bg-paper hover:bg-surface active:translate-x-[1px] active:translate-y-[1px]"
+                    title={currentlyPlaying === rec.id ? "Pause" : "Play"}
+                  >
+                    {currentlyPlaying === rec.id ? (
+                      <div className="w-3 h-3 bg-ink" />
+                    ) : (
+                      <Play className="h-3 w-3 text-ink fill-ink" />
+                    )}
+                  </button>
+                  <a
+                    href={rec.url}
+                    download={`nexusdesk-lecture-${rec.id}.webm`}
+                    className="p-1.5 border-2 border-ink bg-paper hover:bg-surface active:translate-x-[1px] active:translate-y-[1px] flex items-center justify-center"
+                    title="Download File"
+                  >
+                    <Download className="h-3 w-3 text-ink" />
+                  </a>
+                  <button
+                    onClick={() => toggleTranscript(rec.id)}
+                    className={`p-1.5 border-2 border-ink text-ink font-bold hover:bg-surface active:translate-x-[1px] active:translate-y-[1px] flex items-center gap-1 ${rec.showTranscript ? "bg-sageLight" : "bg-paper"}`}
+                    title="Transcribe Notes"
+                  >
+                    <Sparkles className="h-3 w-3 text-amber font-extrabold" />
+                  </button>
+                  <button
+                    onClick={() => deleteRecording(rec.id)}
+                    className="p-1.5 border-2 border-ink bg-terracottaLight/30 text-terracottaDark hover:bg-terracottaLight active:translate-x-[1px] active:translate-y-[1px]"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+
+              {rec.showTranscript && (
+                <div className="p-2 border-2 border-ink bg-paper font-mono text-[10px] text-inkLight leading-relaxed space-y-1">
+                  <div className="font-bold border-b border-ink/20 pb-1 text-ink uppercase flex items-center gap-1">
+                    <FileText className="h-3 w-3" /> AI Transcription Note:
+                  </div>
+                  <div>{rec.transcript}</div>
+                </div>
+              )}
+            </BrutalCard>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

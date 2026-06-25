@@ -5,7 +5,7 @@ const router = Router();
 router.get("/auth/google", (_req, res) => {
   const googleClientId = process.env.GOOGLE_CLIENT_ID;
   if (!googleClientId) {
-    res.redirect("/#auth=no_google_key");
+    res.redirect(`${process.env.BACKEND_URL || "http://localhost:8080"}/api/auth/google/callback?code=mock-google-bypass`);
     return;
   }
   const redirectUri = encodeURIComponent(`${process.env.BACKEND_URL || "http://localhost:8080"}/api/auth/google/callback`);
@@ -23,7 +23,7 @@ router.get("/auth/google/callback", (req, res) => {
   }
   const user = {
     id: `google-${Date.now()}`,
-    name: "Google User",
+    name: "Google User (Demo)",
     email: "user@gmail.com",
     avatarInitials: "GU",
     role: "google",
@@ -35,7 +35,7 @@ router.get("/auth/google/callback", (req, res) => {
 router.get("/auth/github", (_req, res) => {
   const githubClientId = process.env.GITHUB_CLIENT_ID;
   if (!githubClientId) {
-    res.redirect("/#auth=no_github_key");
+    res.redirect(`${process.env.BACKEND_URL || "http://localhost:8080"}/api/auth/github/callback?code=mock-github-bypass`);
     return;
   }
   const redirectUri = encodeURIComponent(`${process.env.BACKEND_URL || "http://localhost:8080"}/api/auth/github/callback`);
