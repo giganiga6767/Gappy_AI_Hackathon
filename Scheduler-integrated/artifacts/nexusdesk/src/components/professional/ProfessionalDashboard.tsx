@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { format } from "date-fns";
 import { 
   useListTasks,
@@ -14,8 +14,9 @@ import {
 import { BrutalCard } from "@/components/shared/BrutalCard";
 import { BrutalBadge } from "@/components/shared/BrutalBadge";
 import { BrutalButton } from "@/components/shared/BrutalButton";
-import { Mail, CheckCircle, Circle, Upload, Plus, Trash2, Edit2, Check, X, Mic, MicOff, Play, Download, Sparkles, FileText } from "lucide-react";
+import { Mail, CheckCircle, Circle, Upload, Plus, Trash2, Edit2, Check, X, Mic, MicOff, Play, Download, Sparkles, FileText, Loader2 } from "lucide-react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
+import { getLLMSettings } from "@/components/settings/SettingsModal";
 
 const CORP_COLORS = {
   bg: "bg-paper",
@@ -58,13 +59,31 @@ function MeetingRecorderWidget() {
     url: string;
     duration: string;
     transcript?: string;
+    notes?: string;
     showTranscript?: boolean;
-  }>>([]);
+  }>>(() => {
+    try {
+      const saved = localStorage.getItem("nexusdesk_recordings_pro");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
+  const [generatingNotesId, setGeneratingNotesId] = useState<string | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("nexusdesk_recordings_pro", JSON.stringify(recordings));
+    } catch (e) {
+      console.error("Failed to save recordings", e);
+    }
+  }, [recordings]);
 
   const startRecording = async () => {
     try {
@@ -140,6 +159,51 @@ function MeetingRecorderWidget() {
     }
     setSessionId(null);
     setElapsed(0);
+  };
+
+  const renameRecording = (id: string) => {
+    const newLabel = prompt("Enter new name for the recording:");
+    if (newLabel && newLabel.trim()) {
+      setRecordings(prev => prev.map(r => r.id === id ? { ...r, label: newLabel.trim() } : r));
+    }
+  };
+
+  const generateNotes = async (rec: any) => {
+    if (!rec.transcript) return;
+    setGeneratingNotesId(rec.id);
+    try {
+      const settings = getLLMSettings();
+      const res = await fetch("/api/record/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcript: rec.transcript,
+          provider: settings.provider,
+          apiKey: settings.apiKey,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.notes) {
+        // Download Notes as File
+        const blob = new Blob([data.notes], { type: "text/markdown" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${rec.label.toLowerCase().replace(/\s+/g, "-")}-notes.md`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        setRecordings(prev => prev.map(r => r.id === rec.id ? { ...r, notes: data.notes } : r));
+      } else {
+        alert(data.error || "Failed to generate notes.");
+      }
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setGeneratingNotesId(null);
+    }
   };
 
   const togglePlayPlayback = (rec: any) => {
@@ -235,6 +299,25 @@ function MeetingRecorderWidget() {
                     <Download className="h-3 w-3 text-ink" />
                   </a>
                   <button
+                    onClick={() => renameRecording(rec.id)}
+                    className="p-1.5 border-2 border-ink bg-paper hover:bg-surface active:translate-x-[1px] active:translate-y-[1px] flex items-center justify-center cursor-pointer text-ink"
+                    title="Rename"
+                  >
+                    <Edit2 className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => generateNotes(rec)}
+                    disabled={generatingNotesId === rec.id}
+                    className="p-1.5 border-2 border-ink bg-paper hover:bg-surface active:translate-x-[1px] active:translate-y-[1px] flex items-center justify-center cursor-pointer text-ink disabled:opacity-50"
+                    title="Generate Doc Notes"
+                  >
+                    {generatingNotesId === rec.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <FileText className="h-3 w-3 text-sage" />
+                    )}
+                  </button>
+                  <button
                     onClick={() => toggleTranscript(rec.id)}
                     className={`p-1.5 border-2 border-ink text-ink font-bold hover:bg-surface active:translate-x-[1px] active:translate-y-[1px] flex items-center gap-1 cursor-pointer ${rec.showTranscript ? "bg-sageLight" : "bg-paper"}`}
                     title="View Summary"
@@ -252,11 +335,20 @@ function MeetingRecorderWidget() {
               </div>
 
               {rec.showTranscript && (
-                <div className="p-2 border-2 border-ink bg-paper font-mono text-[10px] text-inkLight leading-relaxed space-y-1">
+                <div className="p-2 border-2 border-ink bg-paper font-mono text-[10px] text-inkLight leading-relaxed space-y-2">
                   <div className="font-bold border-b border-ink/20 pb-1 text-ink uppercase flex items-center gap-1">
-                    <FileText className="h-3 w-3" /> AI Transcription Summary:
+                    <FileText className="h-3 w-3 text-amber" /> AI Transcription Summary:
                   </div>
                   <div>{rec.transcript}</div>
+                  
+                  {rec.notes && (
+                    <div className="mt-2 pt-2 border-t border-ink/20 space-y-1">
+                      <div className="font-bold text-sage uppercase flex items-center gap-1">
+                        <FileText className="h-3 w-3" /> Generated Notes:
+                      </div>
+                      <pre className="whitespace-pre-wrap font-mono text-[9px] bg-surface p-2 border border-ink overflow-x-auto max-h-48 text-ink">{rec.notes}</pre>
+                    </div>
+                  )}
                 </div>
               )}
             </BrutalCard>

@@ -904,4 +904,87 @@ router.post("/ingest", async (req, res): Promise<void> => {
   }
 });
 
+router.post("/record/notes", async (req, res): Promise<void> => {
+  const { transcript, provider, apiKey } = req.body;
+  if (!transcript) {
+    res.status(400).json({ error: "Transcript is required" });
+    return;
+  }
+
+  const llmProvider = provider === "antigravity" || provider === "gemini" ? "antigravity" : provider === "lemma" ? "lemma" : "ollama";
+  const geminiApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.ANTIGRAVITY_API_KEY;
+
+  if (llmProvider === "antigravity" && !geminiApiKey) {
+    res.status(400).json({
+      success: false,
+      error: "Gemini API key is required when using Antigravity / Gemini provider. Please configure it in Settings.",
+    });
+    return;
+  }
+
+  const prompt = `You are a master academic and professional note-taker. Please convert the following raw transcript from a session recording into beautiful, clean, well-structured, and comprehensive markdown notes. Use headers, bullet points, checklists for action items, and clear sections. Keep it highly readable and clean up any repetition or speech fillers.
+
+Raw Transcript:
+${transcript}`;
+
+  let notes = "";
+  try {
+    if (llmProvider === "lemma") {
+      try {
+        const { LemmaClient } = await import("lemma-sdk");
+        const lemmaClient = new LemmaClient({
+          apiUrl: process.env.LEMMA_API_URL || "http://127-0-0-1.sslip.io:8711",
+          authUrl: process.env.LEMMA_AUTH_URL || "http://127-0-0-1.sslip.io:3711/auth",
+        });
+        await lemmaClient.initialize();
+        req.log.info("Spawning Lemma SDK Agent 'notes' to summarize transcript...");
+        const conv = await lemmaClient.agents.run("notes", prompt);
+        const convObj = conv as any;
+        if (!convObj || !convObj.id) {
+          throw new Error("Lemma Agent run did not return a valid conversation object/ID");
+        }
+
+        let attempts = 0;
+        let assistantMsgText = "";
+        while (attempts < 15 && !assistantMsgText) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          const messages = await lemmaClient.conversations.messages.list(convObj.id);
+          const assistantMsg = messages.items.find(m => m.role === "assistant" && m.text);
+          if (assistantMsg && assistantMsg.text) {
+            assistantMsgText = assistantMsg.text;
+          }
+          attempts++;
+        }
+
+        if (!assistantMsgText) {
+          throw new Error("Timeout waiting for structured output from Lemma Agent");
+        }
+        notes = assistantMsgText;
+      } catch (err: any) {
+        req.log.warn(`Lemma API Server connection failed: ${err.message || err}. Falling back to inline notes generator.`);
+        if (geminiApiKey) {
+          notes = await callGemini(prompt, geminiApiKey);
+        } else {
+          notes = await callOllama(prompt);
+        }
+      }
+    } else if (llmProvider === "antigravity") {
+      notes = await callGemini(prompt, geminiApiKey!);
+    } else {
+      notes = await callOllama(prompt);
+    }
+
+    res.json({
+      success: true,
+      notes,
+    });
+  } catch (err: any) {
+    req.log.error({ err }, "Failed to generate notes");
+    res.status(500).json({
+      success: false,
+      error: `Failed to generate notes: ${err.message || err}`,
+    });
+  }
+});
+
 export default router;
