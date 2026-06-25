@@ -28,73 +28,112 @@ Copy-paste this exact text into the Replit Agent chat input to complete the proj
 ```text
 Please build the React frontend views and the OAuth authentication routes for our NexusDesk monorepo. Follow these specifications:
 
-1. CODEBASE DIRECTORIES:
-   - Express Backend: `Scheduler-integrated/artifacts/api-server`.
-   - React Frontend: `Scheduler-integrated/artifacts/nexusdesk`.
-   - Note: The backend recording router (`src/routes/record.ts`) and Lemma SDK note ingestion parser (`src/routes/ingest.ts`) are ALREADY coded. Do not modify their core logic.
+============================================================
+⚠️ CRITICAL: DATABASE & ORM SYSTEM INTEGRITY (DO NOT VIOLATE)
+============================================================
+- This workspace already has a fully configured database layer using Drizzle ORM and PostgreSQL inside the `@workspace/db` package.
+- DO NOT install, configure, or use '@replit/database', Replit Object Storage, or any other Replit-specific database helper or library.
+- DO NOT write any custom database connection logic, pg-pools, or SQL client setups.
+- DO NOT rewrite, modify, or add fields to the existing Drizzle schema files in `lib/db/src/schema/`. They are already complete and functional.
+- ALWAYS import the database query client (`db`) and table schemas (e.g. `tasksTable`, `coursesTable`, etc.) from `@workspace/db`.
+- The database is configured using the DATABASE_URL environment variable from the `.env` file at the root.
 
-2. AUTHENTICATION & LOGIN BYPASS:
-   - Setup Google and GitHub OAuth configurations in `api-server`.
-   - Add Google and GitHub sign-in buttons on the landing page.
-   - Add a prominent "Quick Dev Bypass" / "Guest Mode Bypass" login button. Clicking this should log the user in instantly as a pre-configured guest profile without needing real OAuth credentials, allowing the judges to test the app immediately.
+============================================================
+1. CODEBASE DIRECTORIES & PACKAGES:
+============================================================
+- Express Backend: `Scheduler-integrated/artifacts/api-server`
+- React Frontend: `Scheduler-integrated/artifacts/nexusdesk`
+- Shared DB Library: `Scheduler-integrated/lib/db`
+- API Spec / Codegen: `Scheduler-integrated/lib/api-spec` (source OpenAPI spec at `lib/api-spec/openapi.yaml`)
+- API React Client (generated): `Scheduler-integrated/lib/api-client-react`
+- Note: The backend recording router (`src/routes/record.ts`) and Lemma SDK note ingestion parser (`src/routes/ingest.ts`) are ALREADY coded. Do not modify their core logic.
 
-3. LIVE PERSONA SWITCHER & CUSTOM THEMING:
-   - Onboarding view: Prompt the user to choose their profile type:
-     - "Student / Parent Mode" (for any school/college grade level, from 5th class, 10th class, to university, with sub-settings to toggle between Student view and Parent view).
-     - "Working Professional Mode" (for sprint, roadmaps, and CRM tracking).
-   - Add a visible toggle switcher in the navigation bar: "Student/Parent Mode ↔ Professional Mode" to allow changing roles dynamically on-screen during the demo.
-   - Dynamically re-theme the UI on switch:
-     - Student/Parent Mode Theme: Muted brutalist amber/green glow styling with dark paper background (#F1F0E8 / #2D2D2D borders). If "View as Parent" is toggled, adjust vocabulary to track "Child's Progress".
-     - Professional Mode Corporate Theme: High-contrast steel blue, navy, and slate corporate modern styling.
+============================================================
+2. AUTHENTICATION & GUEST MODE BYPASS:
+============================================================
+- Setup Google and GitHub OAuth configurations in the Express `api-server` backend.
+- Create a landing page with Google and GitHub login buttons.
+- Add a prominent, styled "Quick Dev Bypass" / "Guest Mode Bypass" login button. Clicking this should log the user in instantly by returning a pre-seeded guest user session token/cookie from the backend, completely bypassing OAuth providers so judges and testers can enter the dashboard immediately.
 
-4. DYNAMIC PERSONA DASHBOARDS:
-   - STUDENT / PARENT DASHBOARD:
-     - School/Class timeline scheduler showing today's classes and subjects.
-     - Homework & Exam milestones checklist.
-     - Customizable Attendance Progress Bar: An attendance tracker with an editable threshold slider in Settings (customizable from 50% to 100%, e.g., 75% for college, 85% for high school/10th class, or 90% for primary school). Calculates safe-to-skip days or mandatory attendance targets.
-     - Attendance Risk Calendar Heatmap: Render a week/month calendar grid where days are color-coded based on attendance risk safety (Green: safe to skip, Orange: near threshold, Red: danger, must attend school).
-     - Recording start/stop buttons connected to the backend digital loopback recording endpoint (for students to record online classes or lectures).
-   - WORKING PROFESSIONAL DASHBOARD:
-     - Daily standup timeline and meeting log panel.
-     - Product release roadmap milestones showing Dev -> QA -> Release checkmarks.
-     - Kanban sprint board showing billable client hours and quorum indicators.
-     - File uploader dropzone for Excel, PDF, PPT, and CSV uploads.
+============================================================
+3. LIVE PERSONA SWITCHER & NEO-BRUTALIST THEME:
+============================================================
+- On boarding: Prompt the user to select their profile type:
+  - "Student / Parent Mode" (with sub-settings to toggle between Student view and Parent view).
+  - "Working Professional Mode".
+- Persona Switcher Widget: Place a highly visible navigation bar toggle ("Student/Parent Mode ↔ Professional Mode") to change roles instantly on-screen without requiring logouts.
+- Re-theming Mechanism: Dynamically swap visual theme variables or classes on switch:
+  - Student / Parent Mode: Neo-Brutalist amber/green theme. Dark paper background (#F1F0E8 / #2D2D2D borders). Vocabulary tracks "Child's Progress" when Parent sub-mode is active.
+  - Working Professional Mode: High-contrast steel blue, navy, and slate corporate modern Brutalist theme.
+  - Force Brutalist Design Rules globally: `border-radius: 0px !important`, thick borders (`border-2 border-ink`), and solid offset flat shadows (`shadow-[4px_4px_0px_0px_rgba(45,45,45,1)]`).
 
-5. FILE EXTRACTION, EXCEL GRAPHING & DEMO BYPASS:
-   - To prevent LLM binary failures, implement client-side text pre-extraction before hitting the backend:
-     - For PDFs: Use `pdfjs-dist` on the client to extract text page-by-page.
-     - For Excel/CSV: Parse spreadsheets client-side into clean markdown tables.
-     - INTERACTIVE EXCEL GRAPHS (CRITICAL): When Excel/CSV data is uploaded (e.g. grade sheet, task list, project budget, or attendance metrics), render interactive frontend graphs (pie charts for grade distributions, bar charts for task priorities, line graphs for billable hours trends) dynamically directly on the dashboard.
-     - Send the parsed plain text to `POST /api/ingest` under the `rawText` field.
-   - DEMO INGESTION BYPASS (CRITICAL): Add a "Load Demo Session" button next to the uploader. When clicked, it should completely bypass AI steps and instantly populate the database with a pre-configured realistic mock dataset (syllabus schedule, attendance history, tasks with confidence scores, and reasoning quotes) so anyone can test all visual pages and widgets without needing any API keys.
+============================================================
+4. COMPREHENSIVE PERSONA DASHBOARDS:
+============================================================
+- STUDENT / PARENT DASHBOARD:
+  - School/Class timeline scheduler: 7am–10pm timeline grid showing today's classes and subjects.
+  - Milestones: Homework & Exam checklists.
+  - Customizable Attendance Tracker: An attendance percentage progress bar with an interactive slider in Settings (customizable from 50% to 100%). Dynamically calculates:
+    - Current attendance percentage.
+    - Safe-to-skip days remaining (before falling below threshold).
+    - Mandatory classes needed to attend (to restore safety).
+  - Attendance Risk Heatmap: Weekly calendar grid color-coded by safety status (Green: safe, Orange: near threshold warning, Red: unsafe/mandatory attendance).
+  - Digital Recording Loopback Widget: Start/stop recording buttons connected to the backend endpoint `/api/record` for saving online class lectures.
+- WORKING PROFESSIONAL DASHBOARD:
+  - Timeline: Daily standup times and meeting log panel.
+  - Product release roadmap: Milestone checklist with Dev -> QA -> Release checkmark progression.
+  - Kanban board: Dedicated columns for Professional categories ('SAGE_SPRINT', 'PRODUCTION_OPS', 'CLIENT_CRM', 'LOGISTICS').
+  - File uploader dropzone: For PPT, PDF, Excel, and CSV files.
 
-6. KANBAN WIDGET ENHANCEMENTS (CONFIDENCE SCORING & TRANSPARENCY):
-   - Categorize columns dynamically based on active persona:
-     - Student/Parent categories: 'HOMEWORK_SCHOOL', 'EXTRACURRICULAR', 'EXAM_PREP', 'PERSONAL'.
-     - Professional categories: 'SAGE_SPRINT', 'PRODUCTION_OPS', 'CLIENT_CRM', 'LOGISTICS'.
-   - On each Kanban task card, display:
-     - A color-coded "Confidence Badge" based on the task's `confidenceScore` (Green badge for 4-5 high confidence, Orange for 3, Red for 1-2 needs review).
-     - A collapsible "Why did the agent do this?" trace accordion. When expanded, display the exact `reasoningQuote` extracted from the specification.
+============================================================
+5. CLIENT-SIDE FILE EXTRACTION & SVG GRAPHING (NO HALLUCINATIONS):
+============================================================
+- Client-Side Parsing: To prevent server-side failures or binary parser bugs, execute parsing on the client:
+  - PDF: Use `pdfjs-dist` on the frontend to extract text page-by-page.
+  - Excel/CSV: Parse on the frontend into markdown table structures.
+  - Plain Text Delivery: Submit the parsed text to the backend `POST /api/ingest` under the `rawText` field.
+- INTERACTIVE GRAPHING (CRITICAL): Draw graphs dynamically using custom React SVG components (DO NOT install complex external charting packages that may introduce compilation or TypeScript type errors). Create clean SVG bar, pie, and line charts:
+  - Use `<rect>` elements for bar charts (e.g. showing task count by priority or grade distributions).
+  - Use `<path>` elements with calculated polar coordinates (`M cx cy L x1 y1 A r r ...`) for pie charts (e.g. for attendance or project metrics).
+  - Use `<polyline>` or `<path>` elements for line graphs (e.g. billable hours trends).
+  - Apply the Muted Neo-Brutalist styling (thick black outlines, high-contrast colors, sharp edges) directly to the SVG shapes.
+- DEMO INGESTION BYPASS: Add a prominent "Load Demo Session" button next to the uploader. Clicking this must call a backend demo loading endpoint (`POST /api/ingest/demo`) that inserts a pre-configured mock dataset (schedule timetable, tasks, attendance history, grades, projects with confidence scores, and reasoning quotes) directly into the database. This allows instant visualization of populated dashboards and SVG charts without needing any API keys.
 
+============================================================
+6. KANBAN WIDGET ENHANCEMENTS:
+============================================================
+- Dynamic Categorization:
+  - Student columns: 'HOMEWORK_SCHOOL', 'EXTRACURRICULAR', 'EXAM_PREP', 'PERSONAL'.
+  - Professional columns: 'SAGE_SPRINT', 'PRODUCTION_OPS', 'CLIENT_CRM', 'LOGISTICS'.
+- Card Details:
+  - Display a color-coded "Confidence Badge" based on the task's `confidenceScore` (Green: score 4-5, Orange: score 3, Red: score 1-2).
+  - Display a collapsible "Why did the agent do this?" trace accordion. When expanded, show the exact `reasoningQuote` extracted from the project specification.
+
+============================================================
 7. ONE-CLICK EMAIL DRAFT:
-   - In Professional Mode, add a "Draft Follow-up Email" / "Copy & open Gmail" button next to processed meeting summaries.
-   - Clicking it should open a browser window using a mailto link prefilled with the subject "Meeting minutes & action items" and a structured markdown body containing meeting summary bullets and Kanban tasks.
+============================================================
+- Add a "Draft Follow-up Email" / "Copy & open Gmail" action next to meeting logs and summaries in Professional Mode.
+- This action must generate a mailto link with a pre-configured subject ("Meeting minutes & action items") and a structured Markdown summary body containing action points, deadlines, and assigned tasks.
 
-8. MULTI-MODEL PROVIDER SUPPORT, SECURE KEYS & STATUS INDICATOR:
-   - Add a Settings icon/modal in the navigation bar. Inside it, allow the user to select their preferred cloud LLM provider:
-     - "Google Gemini" (default models: gemini-2.5-flash, gemini-2.5-pro)
-     - "OpenAI GPT" (default models: gpt-4o, gpt-4o-mini)
-     - "Anthropic Claude" (default models: claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022)
-   - Allow entering and saving their respective API keys. Store the selected provider, model, and active API key securely in the browser's `localStorage` so it persists.
-   - When calling `POST /api/ingest`, send the `provider`, `model`, and `apiKey` values in the request body. If the user doesn't specify a key, the backend will safely fallback to the server-side environment secrets (e.g. GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY) so they don't leak.
-   - Add a visible connectivity status indicator in the navigation bar:
-     - Green dot: "Connected (Server Key Active)" if no custom local key is set but server default key is active.
-     - Purple dot: "Custom Key Active (Local Settings)" if the user has configured their own custom key.
-     - Red dot: "API Key Required" if neither is set.
+============================================================
+8. MULTI-MODEL SETTINGS & SECURITY:
+============================================================
+- Settings Modal: A navigation bar icon opening a modal to select the LLM Provider:
+  - Google Gemini (models: gemini-2.5-flash, gemini-2.5-pro)
+  - OpenAI GPT (models: gpt-4o, gpt-4o-mini)
+  - Anthropic Claude (models: claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022)
+- Key Security: Allow inputting custom API keys. Store them in browser `localStorage`. When calling `POST /api/ingest`, send the provider, model, and apiKey in the body. If the apiKey is empty, configure the backend routes to safely fallback to server-side process environment secrets (e.g., `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`) so credentials don't leak.
+- Connectivity Status Indicator: Add a status dot in the navigation bar:
+  - Green: "Connected (Server Key Active)" (no local key set, but server-side key is active).
+  - Purple: "Custom Key Active (Local Settings)" (user's custom localStorage key is active).
+  - Red: "API Key Required" (neither is configured).
 
+============================================================
 9. WEBSOCKET SYNC & RECONNECT TOAST:
-   - For real-time task updates via Lemma change stream, implement a WebSocket client in React.
-   - Add a reconnect loop with exponential backoff and a non-blocking toast alert showing "Reconnecting to live sync..." when connection drops, updating to "Connected" when restored.
+============================================================
+- Backend Sync: Add a simple WebSocket server inside `api-server` (e.g., using the `ws` package). Broadcast updates to client whenever task, course, or scheduling tables change.
+- Client Sync: Implement a React WebSocket hook or connection in `nexusdesk` that listens to `ws://localhost:8080`.
+- Toast Reconnect Alert: If connection drops, execute an exponential backoff reconnect loop and display a non-blocking neo-brutalist toast alert ("Reconnecting to live sync..."). Update the toast to "Connected" when connection is successfully restored.
 
 Ensure Vite React is configured to run on port 19211 and Express backend runs on port 8080. Follow the Muted Neo Brutalist styling rules (zero border radius, thick borders, hard offset shadows) defined in the CSS layout.
 ```
