@@ -330,8 +330,9 @@ export default function StudentDashboard() {
     ((overallPct / 100) * (summary?.todayEventCount ?? 20) - (attendanceThreshold / 100) * (summary?.todayEventCount ?? 20))
   ));
 
-  const pendingTasks = tasks.filter(t => t.status !== "DONE");
-  const todoPct = tasks.length ? Math.round((tasks.filter(t => t.status === "DONE").length / tasks.length) * 100) : 0;
+  const studentTasks = tasks.filter(t => ["HOMEWORK_SCHOOL", "EXTRACURRICULAR", "EXAM_PREP", "PERSONAL"].includes(t.category));
+  const pendingTasks = studentTasks.filter(t => t.status !== "DONE");
+  const todoPct = studentTasks.length ? Math.round((studentTasks.filter(t => t.status === "DONE").length / studentTasks.length) * 100) : 0;
 
   const viewLabel = isParentView ? "Child's Progress" : "My Dashboard";
 
@@ -384,7 +385,7 @@ export default function StudentDashboard() {
               {isParentView ? "PENDING TASKS" : "PENDING TASKS"}
             </span>
             <div className="text-3xl font-mono font-bold mt-2 text-amber">
-              {summary.pendingTaskCount}
+              {pendingTasks.length}
             </div>
             <div className="font-mono text-[10px] text-inkLight">{todoPct}% complete</div>
           </BrutalCard>

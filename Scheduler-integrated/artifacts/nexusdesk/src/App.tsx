@@ -26,19 +26,12 @@ import PlannerPage from "@/pages/PlannerPage";
 const queryClient = new QueryClient();
 
 function Layout({ children }: { children: React.ReactNode }) {
-  const { mode } = usePersona();
-  const isPro = mode === "professional";
-
   return (
-    <div
-      className={`min-h-screen flex transition-colors duration-300 ${
-        isPro ? "bg-[#070f1e]" : "bg-paper"
-      }`}
-    >
+    <div className="min-h-screen flex bg-paper text-ink">
       <Sidebar />
       <div className="flex-1 ml-56 flex flex-col h-screen overflow-hidden">
         <TopBar />
-        <main className={`flex-1 overflow-y-auto ${isPro ? "bg-[#070f1e]" : "bg-paper"}`}>
+        <main className="flex-1 overflow-y-auto bg-paper">
           {children}
         </main>
       </div>

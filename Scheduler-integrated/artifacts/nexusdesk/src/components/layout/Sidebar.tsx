@@ -29,27 +29,17 @@ export function Sidebar() {
   const isPro = mode === "professional";
 
   return (
-    <aside
-      className={`fixed left-0 top-0 bottom-0 w-56 border-r-2 flex flex-col justify-between transition-colors duration-300 ${
-        isPro
-          ? "bg-[#0a1628] border-[#2a4a72]"
-          : "bg-surface border-ink"
-      }`}
-    >
-      <div className={`p-5 border-b-2 ${isPro ? "border-[#2a4a72]" : "border-ink"}`}>
-        <h1
-          className={`text-2xl font-heading font-extrabold tracking-tighter uppercase ${
-            isPro ? "text-[#64a8d8]" : "text-ink"
-          }`}
-        >
+    <aside className="fixed left-0 top-0 bottom-0 w-56 border-r-4 border-ink flex flex-col justify-between bg-surface">
+      <div className="p-5 border-b-4 border-ink">
+        <h1 className="text-2xl font-heading font-extrabold tracking-tighter uppercase text-ink">
           NexusDesk
         </h1>
-        <p className={`font-mono text-xs mt-1 ${isPro ? "text-[#4a7aa8]" : "text-inkLight"}`}>
+        <p className="font-mono text-xs mt-1 text-inkLight">
           v0.1.0 // {isStudent ? "NITK_ECE" : "PROFESSIONAL"}
         </p>
         {isPro && (
-          <div className="mt-2 font-mono text-[9px] border border-[#2a4a72] text-[#4a7aa8] px-2 py-0.5 inline-block">
-            CORP MODE ACTIVE
+          <div className="mt-2 font-mono text-[9px] border-2 border-ink bg-amberLight text-amber px-2 py-0.5 inline-block font-bold">
+            CORP WORKSPACE
           </div>
         )}
       </div>
@@ -63,13 +53,11 @@ export function Sidebar() {
                 <Link
                   href={item.path}
                   className={`block px-3 py-2 font-mono text-xs font-bold tracking-wide border-2 transition-all ${
-                    isPro
-                      ? isActive
-                        ? "bg-[#1e3a5f] text-[#64a8d8] border-[#2a4a72] shadow-[2px_2px_0_0_#2a4a72]"
-                        : "bg-transparent text-[#4a7aa8] border-transparent hover:border-[#2a4a72] hover:bg-[#0f1a2e] hover:text-[#64a8d8]"
-                      : isActive
-                        ? "bg-ink text-paper border-ink"
-                        : "bg-transparent text-ink border-transparent hover:border-ink hover:bg-surfaceHover"
+                    isActive
+                      ? isPro
+                        ? "bg-amber text-paper border-ink shadow-brutal-sm"
+                        : "bg-ink text-paper border-ink"
+                      : "bg-transparent text-ink border-transparent hover:border-ink hover:bg-surfaceHover"
                   }`}
                   data-testid={`link-nav-${item.name.toLowerCase()}`}
                 >
@@ -81,12 +69,12 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      <div className={`p-4 border-t-2 ${isPro ? "border-[#2a4a72]" : "border-ink"}`}>
+      <div className="p-4 border-t-4 border-ink">
         <Link
           href="/ingest"
-          className={`w-full block text-center font-bold border-2 px-4 py-2 shadow-brutal transition-all duration-100 active:shadow-none active:translate-x-[2px] active:translate-y-[2px] hover:shadow-brutal-sm hover:-translate-x-[2px] hover:-translate-y-[2px] ${
+          className={`w-full block text-center font-bold border-4 border-ink px-4 py-2 shadow-brutal transition-all duration-100 active:shadow-none active:translate-x-[2px] active:translate-y-[2px] hover:shadow-brutal-sm hover:-translate-x-[2px] hover:-translate-y-[2px] ${
             isPro
-              ? "bg-[#1e3a5f] text-[#64a8d8] border-[#2a4a72]"
+              ? "bg-amber text-paper"
               : "brutal-btn-primary"
           }`}
           data-testid="link-quick-paste"

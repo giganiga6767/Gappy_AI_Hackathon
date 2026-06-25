@@ -8,36 +8,30 @@ import { Mail, CheckCircle, Circle, Upload, Plus, Trash2, Edit2, Check, X, Mic, 
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
 
 const CORP_COLORS = {
-  bg: "#0f1a2e",
-  card: "#142038",
-  border: "#2a4a72",
-  accent: "#64a8d8",
-  success: "#4a9e6b",
-  warn: "#d4a843",
-  danger: "#c0443a",
-  text: "#e8f0fb",
-  muted: "#4a7aa8",
+  bg: "bg-paper",
+  card: "bg-surface border-4 border-ink shadow-brutal",
+  border: "border-ink",
+  accent: "#b45309",
+  success: "#166534",
+  warn: "#b45309",
+  danger: "#b91c1c",
+  text: "text-ink",
+  muted: "text-inkLight",
 };
 
 function ProCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div
-      className={`border-2 p-4 ${className}`}
-      style={{ backgroundColor: CORP_COLORS.card, borderColor: CORP_COLORS.border }}
-    >
+    <BrutalCard className={`p-5 bg-surface border-4 border-ink shadow-brutal ${className}`}>
       {children}
-    </div>
+    </BrutalCard>
   );
 }
 
 function ProLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="font-mono text-[10px] font-bold uppercase tracking-widest pb-2 mb-3 border-b-2"
-      style={{ color: CORP_COLORS.muted, borderColor: CORP_COLORS.border }}
-    >
+    <h3 className="section-label mb-4 pb-2 border-b-2 border-ink/10 text-ink">
       {children}
-    </div>
+    </h3>
   );
 }
 
@@ -172,86 +166,74 @@ function MeetingRecorderWidget() {
   const secs = (elapsed % 60).toString().padStart(2, "0");
 
   return (
-    <div className="space-y-4">
-      <div
-        className={`border-2 p-4 ${recording ? "border-terracotta bg-terracottaLight/10" : ""}`}
-        style={{ backgroundColor: CORP_COLORS.card, borderColor: recording ? CORP_COLORS.danger : CORP_COLORS.border }}
-      >
-        <div className="font-mono text-[10px] font-bold uppercase tracking-widest pb-2 mb-3 border-b-2" style={{ color: CORP_COLORS.muted, borderColor: CORP_COLORS.border }}>
-          MEETING AUDIO RECORDER
-        </div>
+    <div className="space-y-4 text-ink">
+      <BrutalCard className={`p-4 ${recording ? "border-terracotta bg-terracottaLight/20 shadow-brutal-accent" : ""}`}>
+        <h3 className="section-label mb-3">MEETING RECORDER</h3>
         <div className="flex items-center gap-3">
           {recording ? (
             <>
               <div className="w-3 h-3 bg-terracotta border-2 border-terracottaDark animate-pulse" />
-              <span className="font-mono text-sm font-bold text-ink">REC {mins}:{secs}</span>
-              <button
-                onClick={stopRecording}
-                className="ml-auto font-mono text-[10px] font-bold border border-[#c0443a] bg-[#c0443a] text-white px-3 py-1.5 hover:opacity-90 flex items-center gap-1 cursor-pointer"
-              >
-                <MicOff className="h-3 w-3" /> STOP RECORDING
-              </button>
+              <span className="font-mono text-sm font-bold">REC {mins}:{secs}</span>
+              <BrutalButton onClick={stopRecording} className="ml-auto">
+                <MicOff className="h-4 w-4 mr-1" /> STOP
+              </BrutalButton>
             </>
           ) : (
             <>
-              <Mic className="h-4 w-4 text-[#4a7aa8]" />
-              <span className="font-mono text-xs text-[#4a7aa8]">Ready to record meeting audio</span>
-              <button
-                onClick={startRecording}
-                className="ml-auto font-mono text-[10px] font-bold border border-[#64a8d8] bg-[#1e3a5f] text-[#64a8d8] px-3 py-1.5 hover:bg-[#2a4a72] flex items-center gap-1 cursor-pointer"
-              >
-                <Mic className="h-3 w-3" /> START RECORDING
-              </button>
+              <Mic className="h-4 w-4 text-inkLight" />
+              <span className="font-mono text-xs text-inkLight">Ready to record meeting audio</span>
+              <BrutalButton variant="primary" onClick={startRecording} className="ml-auto">
+                <Mic className="h-4 w-4 mr-1" /> RECORD
+              </BrutalButton>
             </>
           )}
         </div>
-      </div>
+      </BrutalCard>
 
       {recordings.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-3">
+          <div className="font-mono text-xs font-bold text-inkLight uppercase tracking-wider pl-1">
+            Recorded Meetings ({recordings.length})
+          </div>
           {recordings.map(rec => (
-            <div
-              key={rec.id}
-              className="border-2 p-3 space-y-2"
-              style={{ backgroundColor: CORP_COLORS.card, borderColor: CORP_COLORS.border }}
-            >
+            <BrutalCard key={rec.id} className="p-3 bg-surface border-ink space-y-2 shadow-brutal-sm">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-bold text-sm text-[#e8f0fb]">{rec.label}</div>
-                  <div className="font-mono text-[9px] text-[#4a7aa8]">
+                  <div className="font-bold text-sm text-ink">{rec.label}</div>
+                  <div className="font-mono text-[9px] text-inkLight">
                     {rec.timestamp} // Duration: {rec.duration}
                   </div>
                 </div>
                 <div className="flex gap-1">
                   <button
                     onClick={() => togglePlayPlayback(rec)}
-                    className="p-1.5 border border-[#2a4a72] bg-[#0f1a2e] text-[#e8f0fb] hover:bg-[#142038] cursor-pointer"
+                    className="p-1.5 border-2 border-ink bg-paper hover:bg-surface active:translate-x-[1px] active:translate-y-[1px] flex items-center justify-center cursor-pointer text-ink"
                     title={currentlyPlaying === rec.id ? "Pause" : "Play"}
                   >
                     {currentlyPlaying === rec.id ? (
-                      <div className="w-3 h-3 bg-white" />
+                      <div className="w-3 h-3 bg-ink" />
                     ) : (
-                      <Play className="h-3 w-3 text-[#64a8d8] fill-[#64a8d8]" />
+                      <Play className="h-3 w-3 text-ink fill-ink" />
                     )}
                   </button>
                   <a
                     href={rec.url}
                     download={`nexusdesk-meeting-${rec.id}.webm`}
-                    className="p-1.5 border border-[#2a4a72] bg-[#0f1a2e] text-[#64a8d8] hover:bg-[#142038] flex items-center justify-center cursor-pointer"
+                    className="p-1.5 border-2 border-ink bg-paper hover:bg-surface active:translate-x-[1px] active:translate-y-[1px] flex items-center justify-center cursor-pointer text-ink"
                     title="Download Audio"
                   >
-                    <Download className="h-3 w-3" />
+                    <Download className="h-3 w-3 text-ink" />
                   </a>
                   <button
                     onClick={() => toggleTranscript(rec.id)}
-                    className={`p-1.5 border border-[#2a4a72] text-[#64a8d8] hover:bg-[#142038] flex items-center gap-1 cursor-pointer ${rec.showTranscript ? "bg-[#1e3a5f]" : "bg-[#0f1a2e]"}`}
+                    className={`p-1.5 border-2 border-ink text-ink font-bold hover:bg-surface active:translate-x-[1px] active:translate-y-[1px] flex items-center gap-1 cursor-pointer ${rec.showTranscript ? "bg-sageLight" : "bg-paper"}`}
                     title="View Summary"
                   >
-                    <Sparkles className="h-3 w-3 text-[#d4a843]" />
+                    <Sparkles className="h-3 w-3 text-amber font-extrabold" />
                   </button>
                   <button
                     onClick={() => deleteRecording(rec.id)}
-                    className="p-1.5 border border-[#c0443a] bg-[#0f1a2e] text-[#c0443a] hover:bg-[#c0443a]/10 cursor-pointer"
+                    className="p-1.5 border-2 border-ink bg-terracottaLight/30 text-terracottaDark hover:bg-terracottaLight active:translate-x-[1px] active:translate-y-[1px] cursor-pointer"
                     title="Delete"
                   >
                     <Trash2 className="h-3 w-3" />
@@ -260,14 +242,14 @@ function MeetingRecorderWidget() {
               </div>
 
               {rec.showTranscript && (
-                <div className="p-2 border border-[#2a4a72] bg-[#0f1a2e] font-mono text-[10px] text-[#4a7aa8] leading-relaxed space-y-1 animate-none">
-                  <div className="font-bold border-b border-[#2a4a72]/30 pb-1 text-[#64a8d8] uppercase flex items-center gap-1">
+                <div className="p-2 border-2 border-ink bg-paper font-mono text-[10px] text-inkLight leading-relaxed space-y-1">
+                  <div className="font-bold border-b border-ink/20 pb-1 text-ink uppercase flex items-center gap-1">
                     <FileText className="h-3 w-3" /> AI Transcription Summary:
                   </div>
                   <div>{rec.transcript}</div>
                 </div>
               )}
-            </div>
+            </BrutalCard>
           ))}
         </div>
       )}
@@ -277,6 +259,7 @@ function MeetingRecorderWidget() {
 
 export default function ProfessionalDashboard() {
   const { data: tasks = [] } = useListTasks();
+  const proTasks = tasks.filter(t => ["SAGE_SPRINT", "PRODUCTION_OPS", "CLIENT_CRM", "LOGISTICS"].includes(t.category));
 
   // Load / Save state helpers
   const [meetings, setMeetings] = useState<Array<{ time: string; title: string; participants: string[]; status: "done" | "in-progress" | "pending" }>>(() => {
@@ -523,117 +506,103 @@ export default function ProfessionalDashboard() {
   const PIE_COLORS = [CORP_COLORS.accent, CORP_COLORS.success, CORP_COLORS.warn, CORP_COLORS.danger];
 
   return (
-    <div
-      className="p-5 max-w-7xl mx-auto space-y-5 min-h-screen text-[#e8f0fb]"
-      style={{ backgroundColor: CORP_COLORS.bg }}
-    >
-      <div
-        className="flex items-end justify-between pb-4 border-b-2"
-        style={{ borderColor: CORP_COLORS.border }}
-      >
+    <div className="p-6 max-w-7xl mx-auto space-y-6 min-h-screen bg-paper text-ink">
+      {/* Header */}
+      <div className="flex items-end justify-between pb-4 border-b-4 border-ink">
         <div>
-          <h1
-            className="text-4xl font-heading font-extrabold uppercase tracking-tighter"
-            style={{ color: CORP_COLORS.accent }}
-          >
+          <h1 className="text-4xl font-heading font-extrabold uppercase tracking-tighter text-ink">
             Professional Command Center
           </h1>
-          <p className="font-mono text-sm mt-1" style={{ color: CORP_COLORS.muted }}>
+          <p className="font-mono text-sm mt-1 text-inkLight">
             NEXUSDESK // PROFESSIONAL_MODE // {format(new Date(), "yyyy-MM-dd")}
           </p>
         </div>
-        <div
-          className="font-mono text-xs font-bold border-2 px-3 py-1"
-          style={{ borderColor: CORP_COLORS.border, color: CORP_COLORS.accent, backgroundColor: CORP_COLORS.card }}
-        >
+        <div className="font-mono text-xs font-bold border-2 border-ink px-3 py-1 bg-surface text-ink">
           {format(new Date(), "EEEE, MMM d")}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Top statistics cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "SPRINT TASKS", value: tasks.filter(t => t.status !== "DONE").length, color: CORP_COLORS.accent },
-          { label: "DONE TODAY", value: tasks.filter(t => t.status === "DONE").length, color: CORP_COLORS.success },
-          { label: "BILLABLE HRS", value: `${totalBillable}h`, color: CORP_COLORS.warn },
-          { label: "MEETINGS", value: meetings.length, color: CORP_COLORS.muted },
+          { label: "SPRINT TASKS", value: proTasks.filter(t => t.status !== "DONE").length, color: "#b45309" },
+          { label: "DONE TODAY", value: proTasks.filter(t => t.status === "DONE").length, color: "#166534" },
+          { label: "BILLABLE HRS", value: `${totalBillable}h`, color: "#b45309" },
+          { label: "MEETINGS", value: meetings.length, color: "#52525b" },
         ].map(stat => (
           <ProCard key={stat.label}>
-            <div className="font-mono text-[10px] font-bold mb-2" style={{ color: CORP_COLORS.muted }}>{stat.label}</div>
+            <div className="font-mono text-[10px] font-bold mb-2 text-inkLight">{stat.label}</div>
             <div className="font-mono text-3xl font-bold" style={{ color: stat.color }}>{stat.value}</div>
           </ProCard>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 space-y-5">
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          {/* Daily Standup Timeline Card */}
           <ProCard>
-            <div className="flex items-center justify-between mb-3 border-b-2 pb-2" style={{ borderColor: CORP_COLORS.border }}>
+            <div className="flex items-center justify-between mb-4 border-b-2 border-ink/10 pb-2">
               <ProLabel>Daily Standup Timeline</ProLabel>
-              <button
+              <BrutalButton
                 onClick={() => setShowAddMeeting(!showAddMeeting)}
-                className="p-1 border border-[#2a4a72] bg-[#142038] hover:bg-[#2a4a72] text-[#64a8d8] font-bold flex items-center gap-1 font-mono text-[9px] uppercase transition-colors"
+                className="font-mono text-[9px] uppercase transition-colors"
                 title="Add Meeting"
               >
-                {showAddMeeting ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
                 {showAddMeeting ? "Cancel" : "Add Meeting"}
-              </button>
+              </BrutalButton>
             </div>
 
             {showAddMeeting && (
-              <form onSubmit={handleAddMeeting} className="mb-4 p-3 border border-[#2a4a72] bg-[#0f1a2e] space-y-3">
+              <form onSubmit={handleAddMeeting} className="mb-4 p-4 border-2 border-ink bg-surfaceLight/50 space-y-3 shadow-brutal-sm">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   <div className="space-y-1">
-                    <label className="font-mono text-[9px] text-[#4a7aa8] block">TIME</label>
+                    <label className="font-mono text-[9px] text-inkLight block">TIME</label>
                     <input
                       type="text"
                       placeholder="e.g. 09:00"
                       value={newTime}
                       onChange={e => setNewTime(e.target.value)}
-                      className="w-full bg-[#142038] text-[#e8f0fb] border border-[#2a4a72] px-2 py-1 font-mono text-xs focus:outline-none"
+                      className="w-full border-2 border-ink bg-paper px-2 py-1 font-mono text-xs focus:outline-none"
                       required
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-mono text-[9px] text-[#4a7aa8] block">TITLE</label>
+                    <label className="font-mono text-[9px] text-inkLight block">TITLE</label>
                     <input
                       type="text"
                       placeholder="Meeting Title"
                       value={newTitle}
                       onChange={e => setNewTitle(e.target.value)}
-                      className="w-full bg-[#142038] text-[#e8f0fb] border border-[#2a4a72] px-2 py-1 font-mono text-xs focus:outline-none"
+                      className="w-full border-2 border-ink bg-paper px-2 py-1 font-mono text-xs focus:outline-none"
                       required
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-mono text-[9px] text-[#4a7aa8] block">PARTICIPANTS</label>
+                    <label className="font-mono text-[9px] text-inkLight block">PARTICIPANTS</label>
                     <input
                       type="text"
                       placeholder="Dev, PM (comma separated)"
                       value={newParticipants}
                       onChange={e => setNewParticipants(e.target.value)}
-                      className="w-full bg-[#142038] text-[#e8f0fb] border border-[#2a4a72] px-2 py-1 font-mono text-xs focus:outline-none"
+                      className="w-full border-2 border-ink bg-paper px-2 py-1 font-mono text-xs focus:outline-none"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-mono text-[9px] text-[#4a7aa8] block">STATUS</label>
+                    <label className="font-mono text-[9px] text-inkLight block">STATUS</label>
                     <select
                       value={newStatus}
                       onChange={e => setNewStatus(e.target.value as any)}
-                      className="w-full bg-[#142038] text-[#e8f0fb] border border-[#2a4a72] px-2 py-1 font-mono text-xs focus:outline-none h-[26px]"
+                      className="w-full border-2 border-ink bg-paper px-2 py-1 font-mono text-xs focus:outline-none h-[28px]"
                     >
-                      <option value="pending">PENDING</option>
-                      <option value="in-progress">IN-PROGRESS</option>
-                      <option value="done">DONE</option>
+                      <option value="pending" className="bg-paper text-ink">PENDING</option>
+                      <option value="in-progress" className="bg-paper text-ink">IN-PROGRESS</option>
+                      <option value="done" className="bg-paper text-ink">DONE</option>
                     </select>
                   </div>
                 </div>
-                <div className="flex justify-end gap-2">
-                  <button
-                    type="submit"
-                    className="bg-[#4a9e6b] text-white px-3 py-1 font-mono text-xs font-bold hover:opacity-90 flex items-center gap-1 border border-[#4a9e6b]"
-                  >
-                    <Check className="h-3 w-3" /> SAVE MEETING
-                  </button>
+                <div className="flex justify-end">
+                  <BrutalButton type="submit" variant="primary">SAVE MEETING</BrutalButton>
                 </div>
               </form>
             )}
@@ -642,28 +611,29 @@ export default function ProfessionalDashboard() {
               {meetings.map((item, i) => (
                 <div
                   key={i}
-                  className="flex items-start gap-3 p-2 border-l-4 group relative"
+                  className="flex items-start gap-3 p-3 border-l-4 border-2 border-ink shadow-brutal-sm group relative"
                   style={{
-                    borderColor: item.status === "done" ? CORP_COLORS.success : item.status === "in-progress" ? CORP_COLORS.warn : CORP_COLORS.border,
-                    backgroundColor: item.status === "in-progress" ? `${CORP_COLORS.warn}10` : "transparent",
+                    borderLeftColor: item.status === "done" ? "#166534" : item.status === "in-progress" ? "#b45309" : "#000",
+                    backgroundColor: item.status === "done" ? "#f2fcf5" : item.status === "in-progress" ? "#fef8f0" : "#fff",
                   }}
                 >
-                  <span className="font-mono text-xs font-bold w-12 flex-shrink-0" style={{ color: CORP_COLORS.muted }}>
+                  <span className="font-mono text-xs font-bold w-12 flex-shrink-0 text-inkLight">
                     {item.time}
                   </span>
                   <div className="flex-1">
-                    <div className="font-bold text-sm" style={{ color: CORP_COLORS.text }}>{item.title}</div>
-                    <div className="font-mono text-[10px] mt-0.5" style={{ color: CORP_COLORS.muted }}>
+                    <div className="font-bold text-sm text-ink">{item.title}</div>
+                    <div className="font-mono text-[10px] mt-0.5 text-inkLight">
                       {item.participants.join(", ")}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => cycleStatus(i)}
-                      className="font-mono text-[10px] font-bold border px-1.5 py-0.5 hover:opacity-80 transition-opacity uppercase cursor-pointer"
+                      className="font-mono text-[10px] font-bold border-2 px-2 py-0.5 hover:opacity-85 transition-opacity uppercase cursor-pointer shadow-brutal-xs"
                       style={{
-                        color: item.status === "done" ? CORP_COLORS.success : item.status === "in-progress" ? CORP_COLORS.warn : CORP_COLORS.muted,
-                        borderColor: item.status === "done" ? CORP_COLORS.success : item.status === "in-progress" ? CORP_COLORS.warn : CORP_COLORS.border,
+                        color: item.status === "done" ? "#166534" : item.status === "in-progress" ? "#b45309" : "#52525b",
+                        borderColor: item.status === "done" ? "#166534" : item.status === "in-progress" ? "#b45309" : "#000",
+                        backgroundColor: "#fff",
                       }}
                       title="Click to cycle status"
                     >
@@ -671,121 +641,109 @@ export default function ProfessionalDashboard() {
                     </button>
                     <button
                       onClick={() => deleteMeeting(i)}
-                      className="text-[#c0443a] opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-[#c0443a]/20 border border-transparent hover:border-[#c0443a]"
+                      className="text-[#b91c1c] opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-[#b91c1c]/10 border-2 border-transparent hover:border-[#b91c1c] cursor-pointer"
                       title="Delete Meeting"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
               ))}
               {meetings.length === 0 && (
-                <div className="font-mono text-xs text-center py-4 text-[#4a7aa8]">
+                <div className="font-mono text-xs text-center py-6 text-inkLight">
                   NO MEETINGS SCHEDULED
                 </div>
               )}
             </div>
           </ProCard>
 
+          {/* Product Release Roadmap Card */}
           <ProCard>
-            <div className="flex items-center justify-between mb-4 border-b-2 pb-2" style={{ borderColor: CORP_COLORS.border }}>
+            <div className="flex items-center justify-between mb-4 border-b-2 border-ink/10 pb-2">
               <ProLabel>Product Release Roadmap</ProLabel>
-              <button
+              <BrutalButton
                 onClick={() => setShowAddMilestone(!showAddMilestone)}
-                className="p-1 border border-[#2a4a72] bg-[#142038] hover:bg-[#2a4a72] text-[#64a8d8] font-bold flex items-center gap-1 font-mono text-[9px] uppercase transition-colors"
+                className="font-mono text-[9px] uppercase transition-colors"
                 title="Add Milestone"
               >
-                {showAddMilestone ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
                 {showAddMilestone ? "Cancel" : "Add Milestone"}
-              </button>
+              </BrutalButton>
             </div>
 
             {showAddMilestone && (
-              <form onSubmit={handleAddMilestone} className="mb-4 p-3 border border-[#2a4a72] bg-[#0f1a2e] space-y-3">
+              <form onSubmit={handleAddMilestone} className="mb-4 p-4 border-2 border-ink bg-surfaceLight/50 space-y-3 shadow-brutal-sm">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div className="space-y-1">
-                    <label className="font-mono text-[9px] text-[#4a7aa8] block">MILESTONE LABEL</label>
+                    <label className="font-mono text-[9px] text-inkLight block">MILESTONE LABEL</label>
                     <input
                       type="text"
                       placeholder="e.g. Sprint 13"
                       value={newMileLabel}
                       onChange={e => setNewMileLabel(e.target.value)}
-                      className="w-full bg-[#142038] text-[#e8f0fb] border border-[#2a4a72] px-2 py-1 font-mono text-xs focus:outline-none"
+                      className="w-full border-2 border-ink bg-paper px-2 py-1 font-mono text-xs focus:outline-none"
                       required
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-mono text-[9px] text-[#4a7aa8] block">PHASE</label>
+                    <label className="font-mono text-[9px] text-inkLight block">PHASE</label>
                     <input
                       type="text"
                       placeholder="e.g. DEV, QA, RELEASE"
                       value={newMilePhase}
                       onChange={e => setNewMilePhase(e.target.value)}
-                      className="w-full bg-[#142038] text-[#e8f0fb] border border-[#2a4a72] px-2 py-1 font-mono text-xs focus:outline-none"
+                      className="w-full border-2 border-ink bg-paper px-2 py-1 font-mono text-xs focus:outline-none"
                       required
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-mono text-[9px] text-[#4a7aa8] block">TARGET DATE</label>
+                    <label className="font-mono text-[9px] text-inkLight block">TARGET DATE</label>
                     <input
                       type="text"
                       placeholder="e.g. Jul 15"
                       value={newMileDate}
                       onChange={e => setNewMileDate(e.target.value)}
-                      className="w-full bg-[#142038] text-[#e8f0fb] border border-[#2a4a72] px-2 py-1 font-mono text-xs focus:outline-none"
+                      className="w-full border-2 border-ink bg-paper px-2 py-1 font-mono text-xs focus:outline-none"
                       required
                     />
                   </div>
                 </div>
                 <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="bg-[#4a9e6b] text-white px-3 py-1 font-mono text-xs font-bold hover:opacity-90 flex items-center gap-1 border border-[#4a9e6b]"
-                  >
-                    <Check className="h-3 w-3" /> SAVE MILESTONE
-                  </button>
+                  <BrutalButton type="submit" variant="primary">SAVE MILESTONE</BrutalButton>
                 </div>
               </form>
             )}
 
-            <div className="relative pt-2">
+            <div className="relative pt-4 pb-2">
               <div
-                className="absolute left-0 right-0 top-7 h-[2px]"
-                style={{ backgroundColor: CORP_COLORS.border }}
+                className="absolute left-0 right-0 top-9 h-[4px] bg-ink"
               />
               <div className="flex justify-between relative">
                 {milestones.map((m, i) => (
                   <div key={i} className="flex flex-col items-center gap-2 flex-1 group relative">
                     <button
                       onClick={() => toggleMilestoneDone(i)}
-                      className="w-8 h-8 border-2 flex items-center justify-center font-bold text-xs relative z-10 cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-                      style={{
-                        backgroundColor: m.done ? CORP_COLORS.success : CORP_COLORS.card,
-                        borderColor: m.done ? CORP_COLORS.success : CORP_COLORS.border,
-                        color: m.done ? "#fff" : CORP_COLORS.muted,
-                      }}
+                      className={`w-9 h-9 border-4 flex items-center justify-center font-bold text-xs relative z-10 cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-brutal-sm ${
+                        m.done ? "bg-sage text-paper border-ink" : "bg-surface text-ink border-ink"
+                      }`}
                       title="Click to toggle status"
                     >
                       {m.done ? "✓" : i + 1}
                     </button>
                     <div className="text-center space-y-0.5">
-                      <div className="font-mono text-[10px] font-bold flex items-center justify-center gap-1" style={{ color: m.done ? CORP_COLORS.success : CORP_COLORS.text }}>
-                        {m.label}
+                      <div className="font-mono text-[10px] font-bold flex items-center justify-center gap-1 text-ink">
+                        <span style={{ color: m.done ? "#166534" : "#000" }}>{m.label}</span>
                         <button
                           onClick={() => deleteMilestone(i)}
-                          className="text-[#c0443a] opacity-0 group-hover:opacity-100 transition-opacity ml-0.5"
+                          className="text-[#b91c1c] opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 font-bold cursor-pointer"
                           title="Delete Milestone"
                         >
                           ✕
                         </button>
                       </div>
-                      <div
-                        className="font-mono text-[9px] border px-1 inline-block"
-                        style={{ color: CORP_COLORS.muted, borderColor: CORP_COLORS.border }}
-                      >
+                      <div className="font-mono text-[9px] border-2 border-ink px-1.5 inline-block font-bold bg-amberLight text-amber">
                         {m.phase}
                       </div>
-                      <div className="font-mono text-[9px]" style={{ color: CORP_COLORS.muted }}>{m.date}</div>
+                      <div className="font-mono text-[9px] text-inkLight font-semibold">{m.date}</div>
                     </div>
                   </div>
                 ))}
@@ -793,47 +751,48 @@ export default function ProfessionalDashboard() {
             </div>
           </ProCard>
 
+          {/* Excel / CSV Live Analytics Card */}
           <ProCard>
             <ProLabel>Excel / CSV Live Analytics Dropzone</ProLabel>
-            <div className="border-2 border-dashed border-[#2a4a72] p-6 text-center cursor-pointer hover:bg-[#142038]/50 transition-colors relative">
+            <div className="border-4 border-dashed border-ink p-6 text-center cursor-pointer bg-paper hover:bg-surfaceHover transition-colors relative">
               <input
                 type="file"
                 accept=".csv,.xlsx,.xls"
                 onChange={handleLocalUpload}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
-              <Upload className="mx-auto h-8 w-8 mb-2" style={{ color: CORP_COLORS.accent }} />
-              <div className="font-mono text-xs font-bold" style={{ color: CORP_COLORS.text }}>
+              <Upload className="mx-auto h-8 w-8 mb-2 text-amber" />
+              <div className="font-mono text-xs font-bold text-ink">
                 {uploadName ? `UPLOADED: ${uploadName.toUpperCase()}` : "DROP OR CLICK TO UPLOAD EXCEL/CSV"}
               </div>
-              <div className="font-mono text-[9px] mt-1" style={{ color: CORP_COLORS.muted }}>
+              <div className="font-mono text-[9px] mt-1 text-inkLight font-semibold">
                 Parses grades, billable hours, or budget metrics dynamically into charts
               </div>
             </div>
 
             {localCharts.length > 0 && (
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {localCharts.map((chart, idx) => (
-                  <div key={idx} className="border p-3" style={{ borderColor: CORP_COLORS.border, backgroundColor: CORP_COLORS.bg }}>
-                    <div className="font-mono text-[10px] font-bold mb-3" style={{ color: CORP_COLORS.accent }}>
+                  <div key={idx} className="border-4 border-ink p-4 bg-paper shadow-brutal-sm">
+                    <div className="font-mono text-[10px] font-bold mb-3 text-amber uppercase">
                       {chart.title.toUpperCase()}
                     </div>
-                    <ResponsiveContainer width="100%" height={150}>
+                    <ResponsiveContainer width="100%" height={160}>
                       {chart.type === "pie" ? (
                         <PieChart>
                           <Pie data={chart.data} cx="50%" cy="50%" outerRadius={50} dataKey="value" label={({ name }) => name}>
-                            {chart.data.map((_, i) => (
-                              <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke={CORP_COLORS.border} strokeWidth={1} />
+                            {chart.data.map((_: any, i: number) => (
+                              <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="#000" strokeWidth={2} />
                             ))}
                           </Pie>
                         </PieChart>
                       ) : (
                         <BarChart data={chart.data}>
-                          <XAxis dataKey="name" tick={{ fontSize: 8, fill: CORP_COLORS.muted }} />
-                          <YAxis tick={{ fontSize: 8, fill: CORP_COLORS.muted }} />
-                          <Tooltip contentStyle={{ backgroundColor: CORP_COLORS.card, border: `1px solid ${CORP_COLORS.border}`, color: CORP_COLORS.text, fontFamily: "monospace", fontSize: 9 }} />
+                          <XAxis dataKey="name" tick={{ fontSize: 8, fill: "#000", fontFamily: "monospace" }} />
+                          <YAxis tick={{ fontSize: 8, fill: "#000", fontFamily: "monospace" }} />
+                          <Tooltip contentStyle={{ backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontFamily: "monospace", fontSize: 9 }} />
                           {Object.keys(chart.data[0] || {}).filter(k => k !== "name").map((key, i) => (
-                            <Bar key={key} dataKey={key} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke={CORP_COLORS.border} strokeWidth={1} />
+                            <Bar key={key} dataKey={key} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="#000" strokeWidth={2} />
                           ))}
                         </BarChart>
                       )}
@@ -844,21 +803,22 @@ export default function ProfessionalDashboard() {
             )}
           </ProCard>
 
+          {/* Meeting Summary Card */}
           <ProCard>
-            <div className="flex items-center justify-between mb-3 border-b-2 pb-2" style={{ borderColor: CORP_COLORS.border }}>
+            <div className="flex items-center justify-between mb-3 border-b-2 border-ink/10 pb-2">
               <ProLabel>Meeting Summary & Follow-up</ProLabel>
               <div className="flex gap-2">
                 {isEditingSummary ? (
                   <>
                     <button
                       onClick={saveSummary}
-                      className="flex items-center gap-1 font-mono text-[9px] font-bold border border-[#4a9e6b] px-2 py-0.5 bg-[#4a9e6b] text-white hover:opacity-90 cursor-pointer"
+                      className="flex items-center gap-1 font-mono text-[9px] font-bold border-2 border-ink px-2.5 py-1 bg-sage text-paper hover:opacity-90 cursor-pointer shadow-brutal-xs"
                     >
                       <Check className="h-2.5 w-2.5" /> SAVE
                     </button>
                     <button
                       onClick={() => { setIsEditingSummary(false); setTempSummary(meetingSummary); }}
-                      className="flex items-center gap-1 font-mono text-[9px] font-bold border border-[#c0443a] px-2 py-0.5 bg-[#c0443a] text-white hover:opacity-90 cursor-pointer"
+                      className="flex items-center gap-1 font-mono text-[9px] font-bold border-2 border-ink px-2.5 py-1 bg-terracotta text-paper hover:opacity-90 cursor-pointer shadow-brutal-xs"
                     >
                       <X className="h-2.5 w-2.5" /> CANCEL
                     </button>
@@ -866,17 +826,16 @@ export default function ProfessionalDashboard() {
                 ) : (
                   <button
                     onClick={() => setIsEditingSummary(true)}
-                    className="flex items-center gap-1 font-mono text-[9px] font-bold border border-[#2a4a72] px-2 py-0.5 bg-[#142038] hover:bg-[#2a4a72] cursor-pointer text-[#64a8d8]"
+                    className="flex items-center gap-1 font-mono text-[9px] font-bold border-2 border-ink px-2.5 py-1 bg-surface hover:bg-surfaceHover cursor-pointer text-amber shadow-brutal-xs"
                   >
                     <Edit2 className="h-2.5 w-2.5" /> EDIT SUMMARY
                   </button>
                 )}
                 <button
                   onClick={handleDraftEmail}
-                  className="flex items-center gap-1.5 font-mono text-[10px] font-bold border px-2 py-1 hover:opacity-80 transition-opacity"
-                  style={{ borderColor: CORP_COLORS.accent, color: CORP_COLORS.accent, backgroundColor: `${CORP_COLORS.accent}10` }}
+                  className="flex items-center gap-1.5 font-mono text-[10px] font-bold border-2 border-ink px-3 py-1 bg-paper hover:bg-surfaceHover transition-colors shadow-brutal-xs text-ink"
                 >
-                  <Mail className="h-3 w-3" />
+                  <Mail className="h-3.5 w-3.5" />
                   DRAFT FOLLOW-UP EMAIL
                 </button>
               </div>
@@ -886,76 +845,70 @@ export default function ProfessionalDashboard() {
               <textarea
                 value={tempSummary}
                 onChange={e => setTempSummary(e.target.value)}
-                className="w-full h-24 bg-[#0f1a2e] text-[#e8f0fb] border border-[#2a4a72] p-3 font-mono text-xs focus:outline-none focus:border-[#64a8d8] rounded-none"
+                className="w-full h-24 bg-paper text-ink border-2 border-ink p-3 font-mono text-xs focus:outline-none focus:bg-surface rounded-none"
               />
             ) : (
-              <div
-                className="font-mono text-xs leading-relaxed p-3 border"
-                style={{ color: CORP_COLORS.text, borderColor: CORP_COLORS.border, backgroundColor: CORP_COLORS.bg }}
-              >
+              <div className="font-mono text-xs leading-relaxed p-3 border-2 border-ink bg-paper text-ink">
                 {meetingSummary}
               </div>
             )}
           </ProCard>
         </div>
 
-        <div className="space-y-5">
+        {/* Sidebar right column */}
+        <div className="space-y-6">
           <MeetingRecorderWidget />
+
+          {/* Billable Split Pie Card */}
           <ProCard>
-            <div className="flex items-center justify-between mb-3 border-b-2 pb-2" style={{ borderColor: CORP_COLORS.border }}>
+            <div className="flex items-center justify-between mb-3 border-b-2 border-ink/10 pb-2">
               <ProLabel>Billable Hours — Client Split</ProLabel>
-              <button
+              <BrutalButton
                 onClick={() => setShowAddBillable(!showAddBillable)}
-                className="p-1 border border-[#2a4a72] bg-[#142038] hover:bg-[#2a4a72] text-[#64a8d8] font-bold flex items-center gap-1 font-mono text-[9px] uppercase transition-colors"
+                className="font-mono text-[9px] uppercase transition-colors"
                 title="Add Client"
               >
-                {showAddBillable ? <X className="h-2.5 w-2.5" /> : <Plus className="h-2.5 w-2.5" />}
                 {showAddBillable ? "Cancel" : "Add Client"}
-              </button>
+              </BrutalButton>
             </div>
 
             {showAddBillable && (
-              <form onSubmit={handleAddBillable} className="mb-3 p-2 border border-[#2a4a72] bg-[#0f1a2e] space-y-2">
+              <form onSubmit={handleAddBillable} className="mb-4 p-3 border-2 border-ink bg-surfaceLight/50 space-y-2 shadow-brutal-sm">
                 <div className="space-y-1">
-                  <label className="font-mono text-[8px] text-[#4a7aa8] block">CLIENT NAME</label>
+                  <label className="font-mono text-[8px] text-inkLight block">CLIENT NAME</label>
                   <input
                     type="text"
                     placeholder="e.g. Acme"
                     value={newClient}
                     onChange={e => setNewClient(e.target.value)}
-                    className="w-full bg-[#142038] text-[#e8f0fb] border border-[#2a4a72] px-2 py-1 font-mono text-xs focus:outline-none animate-none"
+                    className="w-full border-2 border-ink bg-paper px-2 py-1 font-mono text-xs focus:outline-none"
                     required
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <label className="font-mono text-[8px] text-[#4a7aa8] block">HOURS</label>
+                    <label className="font-mono text-[8px] text-inkLight block">HOURS</label>
                     <input
                       type="number"
                       placeholder="e.g. 24"
                       value={newHours}
                       onChange={e => setNewHours(e.target.value)}
-                      className="w-full bg-[#142038] text-[#e8f0fb] border border-[#2a4a72] px-2 py-1 font-mono text-xs focus:outline-none"
+                      className="w-full border-2 border-ink bg-paper px-2 py-1 font-mono text-xs focus:outline-none"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-mono text-[8px] text-[#4a7aa8] block">BUDGET</label>
+                    <label className="font-mono text-[8px] text-inkLight block">BUDGET</label>
                     <input
                       type="number"
                       placeholder="e.g. 40"
                       value={newBudget}
                       onChange={e => setNewBudget(e.target.value)}
-                      className="w-full bg-[#142038] text-[#e8f0fb] border border-[#2a4a72] px-2 py-1 font-mono text-xs focus:outline-none"
+                      className="w-full border-2 border-ink bg-paper px-2 py-1 font-mono text-xs focus:outline-none"
                     />
                   </div>
                 </div>
                 <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="bg-[#4a9e6b] text-white px-2 py-0.5 font-mono text-[10px] font-bold hover:opacity-90 flex items-center gap-1 border border-[#4a9e6b]"
-                  >
-                    <Check className="h-2.5 w-2.5" /> SAVE
-                  </button>
+                  <BrutalButton type="submit" variant="primary">SAVE</BrutalButton>
                 </div>
               </form>
             )}
@@ -966,24 +919,24 @@ export default function ProfessionalDashboard() {
                   <PieChart>
                     <Pie data={pieData} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, value }) => `${name}: ${value}h`} labelLine={false}>
                       {pieData.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke={CORP_COLORS.border} strokeWidth={2} />
+                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="#000" strokeWidth={2} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: CORP_COLORS.card, border: `1px solid ${CORP_COLORS.border}`, color: CORP_COLORS.text, fontFamily: "monospace", fontSize: 10 }} />
+                    <Tooltip contentStyle={{ backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontFamily: "monospace", fontSize: 10 }} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="space-y-1 mt-2">
                   {billableData.map((d, i) => (
-                    <div key={d.client} className="flex items-center justify-between font-mono text-[10px] group border-b border-[#2a4a72]/10 py-1">
+                    <div key={d.client} className="flex items-center justify-between font-mono text-[10px] group border-b border-ink/10 py-1.5">
                       <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                        <span style={{ color: CORP_COLORS.text }}>{d.client}</span>
+                        <div className="w-2.5 h-2.5 border border-ink" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                        <span className="text-ink font-bold">{d.client}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span style={{ color: CORP_COLORS.muted }}>{d.hours}h / {d.budget}h</span>
+                        <span className="text-inkLight font-semibold">{d.hours}h / {d.budget}h</span>
                         <button
                           onClick={() => deleteBillable(d.client)}
-                          className="text-[#c0443a] opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-[#c0443a]/20 cursor-pointer"
+                          className="text-[#b91c1c] opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-[#b91c1c]/10 cursor-pointer"
                           title="Delete Client"
                         >
                           ✕
@@ -994,46 +947,48 @@ export default function ProfessionalDashboard() {
                 </div>
               </>
             ) : (
-              <div className="font-mono text-xs text-center py-6 text-[#4a7aa8]">
+              <div className="font-mono text-xs text-center py-6 text-inkLight">
                 NO CLIENT DATA ENTERED
               </div>
             )}
           </ProCard>
 
+          {/* Billable Hours Trend Card */}
           <ProCard>
             <ProLabel>Billable Hours Trend</ProLabel>
             <ResponsiveContainer width="100%" height={120}>
               <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke={CORP_COLORS.border} />
-                <XAxis dataKey="week" stroke={CORP_COLORS.muted} tick={{ fontSize: 9, fontFamily: "monospace" }} />
-                <YAxis stroke={CORP_COLORS.muted} tick={{ fontSize: 9, fontFamily: "monospace" }} />
-                <Tooltip contentStyle={{ backgroundColor: CORP_COLORS.card, border: `1px solid ${CORP_COLORS.border}`, color: CORP_COLORS.text, fontFamily: "monospace", fontSize: 10 }} />
-                <Line type="monotone" dataKey="hours" stroke={CORP_COLORS.accent} strokeWidth={2} dot={{ fill: CORP_COLORS.accent, r: 3 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
+                <XAxis dataKey="week" stroke="#000" tick={{ fontSize: 9, fontFamily: "monospace" }} />
+                <YAxis stroke="#000" tick={{ fontSize: 9, fontFamily: "monospace" }} />
+                <Tooltip contentStyle={{ backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontFamily: "monospace", fontSize: 10 }} />
+                <Line type="monotone" dataKey="hours" stroke="#b45309" strokeWidth={3} dot={{ fill: "#b45309", r: 4, strokeWidth: 2, stroke: "#000" }} />
               </LineChart>
             </ResponsiveContainer>
           </ProCard>
 
+          {/* Kanban Quorum progress Card */}
           <ProCard>
             <ProLabel>Sprint Kanban Quorum</ProLabel>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {["TODO", "IN_PROGRESS", "DONE"].map(status => {
-                const count = tasks.filter(t => t.status === status).length;
-                const color = status === "DONE" ? CORP_COLORS.success : status === "IN_PROGRESS" ? CORP_COLORS.warn : CORP_COLORS.muted;
+                const count = proTasks.filter(t => t.status === status).length;
+                const color = status === "DONE" ? "#166534" : status === "IN_PROGRESS" ? "#b45309" : "#52525b";
                 return (
                   <div key={status} className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] w-24" style={{ color: CORP_COLORS.muted }}>
+                    <span className="font-mono text-[10px] w-24 text-inkLight font-bold">
                       {status.replace("_", " ")}
                     </span>
-                    <div className="flex-1 h-3 border" style={{ borderColor: CORP_COLORS.border, backgroundColor: CORP_COLORS.bg }}>
+                    <div className="flex-1 h-3 border-2 border-ink bg-paper overflow-hidden">
                       <div
                         className="h-full transition-all"
                         style={{
                           backgroundColor: color,
-                          width: tasks.length ? `${(count / tasks.length) * 100}%` : "0%",
+                          width: proTasks.length ? `${(count / proTasks.length) * 100}%` : "0%",
                         }}
                       />
                     </div>
-                    <span className="font-mono text-[10px] w-6 text-right" style={{ color }}>{count}</span>
+                    <span className="font-mono text-[10px] w-6 text-right font-bold" style={{ color }}>{count}</span>
                   </div>
                 );
               })}

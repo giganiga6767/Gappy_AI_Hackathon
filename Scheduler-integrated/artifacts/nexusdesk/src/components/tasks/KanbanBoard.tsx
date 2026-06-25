@@ -34,12 +34,10 @@ export function KanbanBoard({ tasks, category }: KanbanBoardProps) {
   const doneTasks = categoryTasks.filter((t) => t.status === "DONE");
 
   const displayLabel = CATEGORY_LABELS[category] || category.replace(/_/g, " ");
-  const columnColor = isProfessional
-    ? "bg-[#0f1a2e] border-[#2a4a72]"
-    : "bg-surface border-ink";
+  const columnColor = "bg-surface border-ink";
   const headerColor = isProfessional
-    ? "bg-[#1e3a5f] text-[#64a8d8] border-[#2a4a72]"
-    : "bg-ink text-paper";
+    ? "bg-amber text-paper border-ink"
+    : "bg-ink text-paper border-ink";
 
   return (
     <div

@@ -92,7 +92,7 @@ export default function LoginPage() {
                 onClick={() => setSelectedRole("professional")}
                 className={`flex-1 font-mono text-xs font-bold py-3 transition-colors ${
                   selectedRole === "professional"
-                    ? "bg-[#1e3a5f] text-[#64a8d8]"
+                    ? "bg-amber text-paper"
                     : "bg-paper text-ink hover:bg-surfaceHover"
                 }`}
               >

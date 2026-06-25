@@ -16,7 +16,7 @@ export default function TasksPage() {
     <div className="p-6 h-full flex flex-col max-w-7xl mx-auto">
       <div className="flex items-end justify-between border-b-4 border-ink pb-4 mb-6 shrink-0">
         <div>
-          <h1 className={`text-4xl font-heading font-extrabold uppercase tracking-tighter ${isProfessional ? "text-[#64a8d8]" : "text-ink"}`}>
+          <h1 className="text-4xl font-heading font-extrabold uppercase tracking-tighter text-ink">
             TASKS
           </h1>
           <p className="font-mono text-sm text-inkLight mt-1">{subtitle}</p>

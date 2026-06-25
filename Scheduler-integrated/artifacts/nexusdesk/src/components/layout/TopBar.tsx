@@ -17,17 +17,13 @@ export function TopBar() {
 
   return (
     <>
-      <header
-        className={`h-14 border-b-2 flex items-center justify-between px-4 shrink-0 transition-colors duration-300 ${
-          isPro ? "bg-[#0f1a2e] border-[#2a4a72]" : "bg-paper border-ink"
-        }`}
-      >
+      <header className="h-14 border-b-4 border-ink flex items-center justify-between px-4 shrink-0 bg-paper">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div
-            className={`font-mono text-[10px] font-bold uppercase px-2 py-1 border-2 shadow-brutal-sm whitespace-nowrap ${
+            className={`font-mono text-[10px] font-bold uppercase px-2 py-1 border-2 border-ink shadow-brutal-sm whitespace-nowrap ${
               isPro
-                ? "bg-[#1e3a5f] text-[#64a8d8] border-[#2a4a72]"
-                : "bg-ink text-paper border-ink"
+                ? "bg-amber text-paper"
+                : "bg-ink text-paper"
             }`}
           >
             {isPro ? "PROFESSIONAL WORKSPACE" : "STUDENT WORKSPACE"}
@@ -57,23 +53,15 @@ export function TopBar() {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          <div
-            className={`font-mono text-[10px] font-bold border-2 px-2 py-1 ${
-              isPro
-                ? "bg-[#0f1a2e] border-[#2a4a72] text-[#64a8d8]"
-                : "bg-surface border-ink text-ink"
-            }`}
-          >
+          <div className="font-mono text-[10px] font-bold border-2 border-ink px-2 py-1 bg-surface text-ink">
             {format(new Date(), "MM-dd HH:mm")}
           </div>
 
           <div
-            className={`flex items-center gap-1 font-mono text-[10px] font-bold px-2 py-1 border-2 ${
+            className={`flex items-center gap-1 font-mono text-[10px] font-bold px-2 py-1 border-2 border-ink ${
               connectivity === "custom"
                 ? "border-[#a855f7] text-[#a855f7] bg-[#a855f7]/10"
-                : isPro
-                  ? "border-[#2a4a72] text-[#64a8d8]"
-                  : "border-sage text-sage bg-sageLight/20"
+                : "border-sage text-sage bg-sageLight/20"
             }`}
             title={
               connectivity === "custom"
@@ -104,11 +92,7 @@ export function TopBar() {
 
           <button
             onClick={() => setSettingsOpen(true)}
-            className={`border-2 p-1.5 shadow-brutal-sm hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all ${
-              isPro
-                ? "bg-[#1e3a5f] border-[#2a4a72] text-[#64a8d8] hover:bg-[#2a4a72]"
-                : "bg-surface border-ink"
-            }`}
+            className="border-2 border-ink bg-surface p-1.5 shadow-brutal-sm hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all text-ink"
             title="Settings"
           >
             <Settings className="h-4 w-4" />
@@ -116,20 +100,12 @@ export function TopBar() {
 
           {user && (
             <div className="flex items-center gap-1.5">
-              <div
-                className={`w-7 h-7 border-2 flex items-center justify-center font-mono text-[10px] font-bold ${
-                  isPro
-                    ? "bg-[#1e3a5f] text-[#64a8d8] border-[#2a4a72]"
-                    : "bg-ink text-paper border-ink"
-                }`}
-              >
+              <div className="w-7 h-7 border-2 border-ink flex items-center justify-center font-mono text-[10px] font-bold bg-ink text-paper">
                 {user.avatarInitials}
               </div>
               <button
                 onClick={logout}
-                className={`border-2 p-1.5 shadow-brutal-sm hover:bg-terracottaLight hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all ${
-                  isPro ? "bg-[#1e3a5f] border-[#2a4a72] text-[#64a8d8]" : "bg-surface border-ink"
-                }`}
+                className="border-2 border-ink bg-surface p-1.5 shadow-brutal-sm hover:bg-terracottaLight hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all text-ink"
                 title="Sign out"
               >
                 <LogOut className="h-4 w-4" />
