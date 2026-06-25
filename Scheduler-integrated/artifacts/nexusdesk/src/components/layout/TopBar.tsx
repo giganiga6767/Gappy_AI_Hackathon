@@ -30,31 +30,7 @@ export function TopBar() {
                 : "bg-ink text-paper border-ink"
             }`}
           >
-            {isPro ? "PROFESSIONAL MODE" : "STUDENT MODE"}
-          </div>
-
-          <div className={`flex items-center border-2 overflow-hidden shadow-brutal-sm ${isPro ? "border-[#2a4a72]" : "border-ink"}`}>
-            <button
-              onClick={() => !isStudent && toggleMode()}
-              className={`font-mono text-[10px] font-bold px-3 py-1.5 transition-colors ${
-                isStudent
-                  ? "bg-sage text-paper"
-                  : `${isPro ? "text-[#64a8d8] hover:bg-[#1e3a5f]" : "text-ink hover:bg-surfaceHover"} bg-transparent`
-              }`}
-            >
-              STUDENT/PARENT
-            </button>
-            <div className={`w-[2px] h-5 ${isPro ? "bg-[#2a4a72]" : "bg-ink"}`} />
-            <button
-              onClick={() => isStudent && toggleMode()}
-              className={`font-mono text-[10px] font-bold px-3 py-1.5 transition-colors ${
-                isPro
-                  ? "bg-[#1e3a5f] text-[#64a8d8]"
-                  : "text-ink hover:bg-surfaceHover bg-transparent"
-              }`}
-            >
-              PROFESSIONAL
-            </button>
+            {isPro ? "PROFESSIONAL WORKSPACE" : "STUDENT WORKSPACE"}
           </div>
 
           {isStudent && (
@@ -65,7 +41,7 @@ export function TopBar() {
                   studentView === "student" ? "bg-sage text-paper" : "bg-surface text-ink hover:bg-surfaceHover"
                 }`}
               >
-                STUDENT
+                STUDENT VIEW
               </button>
               <div className="w-[2px] h-5 bg-ink" />
               <button
@@ -74,7 +50,7 @@ export function TopBar() {
                   studentView === "parent" ? "bg-amber text-paper" : "bg-surface text-ink hover:bg-surfaceHover"
                 }`}
               >
-                PARENT
+                PARENT VIEW
               </button>
             </div>
           )}

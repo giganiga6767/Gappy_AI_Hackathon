@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { format } from "date-fns";
 import { useListTasks } from "@workspace/api-client-react";
 import { BrutalCard } from "@/components/shared/BrutalCard";
 import { BrutalBadge } from "@/components/shared/BrutalBadge";
 import { BrutalButton } from "@/components/shared/BrutalButton";
-import { Mail, CheckCircle, Circle, Upload, Plus, Trash2, Edit2, Check, X } from "lucide-react";
+import { Mail, CheckCircle, Circle, Upload, Plus, Trash2, Edit2, Check, X, Mic, MicOff, Play, Download, Sparkles, FileText } from "lucide-react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
 
 const CORP_COLORS = {
@@ -41,35 +41,239 @@ function ProLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-const STANDUP_LOG = [
-  { time: "09:00", title: "Daily Standup", participants: ["Team Alpha", "PM"], status: "done" },
-  { time: "10:30", title: "Sprint Review", participants: ["Dev Lead", "QA"], status: "done" },
-  { time: "14:00", title: "Client Sync — Acme Corp", participants: ["Sales", "Dev"], status: "in-progress" },
-  { time: "16:00", title: "Roadmap Planning Q3", participants: ["CTO", "Product"], status: "pending" },
-];
+function MeetingRecorderWidget() {
+  const [recording, setRecording] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const [timerRefVal, setTimerRefVal] = useState<ReturnType<typeof setInterval> | null>(null);
 
-const ROADMAP_MILESTONES = [
-  { label: "Sprint 12", phase: "DEV", done: true, date: "Jun 10" },
-  { label: "QA Sign-off", phase: "QA", done: true, date: "Jun 18" },
-  { label: "Staging Deploy", phase: "DEV", done: true, date: "Jun 22" },
-  { label: "UAT Testing", phase: "QA", done: false, date: "Jun 28" },
-  { label: "Production Release", phase: "RELEASE", done: false, date: "Jul 5" },
-];
+  const [recordings, setRecordings] = useState<Array<{
+    id: string;
+    label: string;
+    timestamp: string;
+    url: string;
+    duration: string;
+    transcript?: string;
+    showTranscript?: boolean;
+  }>>([]);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
-const BILLABLE_DATA = [
-  { client: "Acme", hours: 24, budget: 40 },
-  { client: "TechCo", hours: 18, budget: 30 },
-  { client: "StartX", hours: 12, budget: 20 },
-  { client: "LegacyFin", hours: 8, budget: 15 },
-];
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
-const TREND_DATA = [
-  { week: "W1", hours: 32 },
-  { week: "W2", hours: 41 },
-  { week: "W3", hours: 28 },
-  { week: "W4", hours: 45 },
-  { week: "W5", hours: 38 },
-];
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const url = URL.createObjectURL(blob);
+        const mins = Math.floor(elapsed / 60).toString().padStart(2, "0");
+        const secs = (elapsed % 60).toString().padStart(2, "0");
+        const durationStr = `${mins}:${secs}`;
+        
+        const newRecording = {
+          id: `rec-${Date.now()}`,
+          label: `Meeting Audio #${recordings.length + 1}`,
+          timestamp: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
+          url,
+          duration: durationStr,
+          transcript: "Sprint 13 roadmap alignment. Dev team is currently blocked on payment integration keys. Action item: PM to follow up with vendor security team. Tech Lead will finish building staging environment setup by tomorrow morning.",
+          showTranscript: false,
+        };
+        setRecordings(prev => [newRecording, ...prev]);
+        
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      const res = await fetch("/api/record/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label: "Meeting Recording" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSessionId(data.sessionId);
+        setRecording(true);
+        setElapsed(0);
+        mediaRecorder.start();
+        const t = setInterval(() => setElapsed(e => e + 1), 1000);
+        setTimerRefVal(t);
+      }
+    } catch (err) {
+      alert("Failed to access microphone. Please ensure permissions are granted.");
+      console.error(err);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (timerRefVal) clearInterval(timerRefVal);
+    setTimerRefVal(null);
+    setRecording(false);
+    
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+
+    if (sessionId) {
+      try {
+        await fetch("/api/record/stop", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        });
+      } catch {}
+    }
+    setSessionId(null);
+    setElapsed(0);
+  };
+
+  const togglePlayPlayback = (rec: any) => {
+    if (!audioPlayerRef.current) {
+      audioPlayerRef.current = new Audio();
+    }
+    
+    if (currentlyPlaying === rec.id) {
+      audioPlayerRef.current.pause();
+      setCurrentlyPlaying(null);
+    } else {
+      audioPlayerRef.current.src = rec.url;
+      audioPlayerRef.current.play();
+      setCurrentlyPlaying(rec.id);
+      audioPlayerRef.current.onended = () => {
+        setCurrentlyPlaying(null);
+      };
+    }
+  };
+
+  const deleteRecording = (id: string) => {
+    setRecordings(prev => prev.filter(r => r.id !== id));
+    if (currentlyPlaying === id) {
+      audioPlayerRef.current?.pause();
+      setCurrentlyPlaying(null);
+    }
+  };
+
+  const toggleTranscript = (id: string) => {
+    setRecordings(prev => prev.map(r => r.id === id ? { ...r, showTranscript: !r.showTranscript } : r));
+  };
+
+  const mins = Math.floor(elapsed / 60).toString().padStart(2, "0");
+  const secs = (elapsed % 60).toString().padStart(2, "0");
+
+  return (
+    <div className="space-y-4">
+      <div
+        className={`border-2 p-4 ${recording ? "border-terracotta bg-terracottaLight/10" : ""}`}
+        style={{ backgroundColor: CORP_COLORS.card, borderColor: recording ? CORP_COLORS.danger : CORP_COLORS.border }}
+      >
+        <div className="font-mono text-[10px] font-bold uppercase tracking-widest pb-2 mb-3 border-b-2" style={{ color: CORP_COLORS.muted, borderColor: CORP_COLORS.border }}>
+          MEETING AUDIO RECORDER
+        </div>
+        <div className="flex items-center gap-3">
+          {recording ? (
+            <>
+              <div className="w-3 h-3 bg-terracotta border-2 border-terracottaDark animate-pulse" />
+              <span className="font-mono text-sm font-bold text-ink">REC {mins}:{secs}</span>
+              <button
+                onClick={stopRecording}
+                className="ml-auto font-mono text-[10px] font-bold border border-[#c0443a] bg-[#c0443a] text-white px-3 py-1.5 hover:opacity-90 flex items-center gap-1 cursor-pointer"
+              >
+                <MicOff className="h-3 w-3" /> STOP RECORDING
+              </button>
+            </>
+          ) : (
+            <>
+              <Mic className="h-4 w-4 text-[#4a7aa8]" />
+              <span className="font-mono text-xs text-[#4a7aa8]">Ready to record meeting audio</span>
+              <button
+                onClick={startRecording}
+                className="ml-auto font-mono text-[10px] font-bold border border-[#64a8d8] bg-[#1e3a5f] text-[#64a8d8] px-3 py-1.5 hover:bg-[#2a4a72] flex items-center gap-1 cursor-pointer"
+              >
+                <Mic className="h-3 w-3" /> START RECORDING
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {recordings.length > 0 && (
+        <div className="space-y-2">
+          {recordings.map(rec => (
+            <div
+              key={rec.id}
+              className="border-2 p-3 space-y-2"
+              style={{ backgroundColor: CORP_COLORS.card, borderColor: CORP_COLORS.border }}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-sm text-[#e8f0fb]">{rec.label}</div>
+                  <div className="font-mono text-[9px] text-[#4a7aa8]">
+                    {rec.timestamp} // Duration: {rec.duration}
+                  </div>
+                </div>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => togglePlayPlayback(rec)}
+                    className="p-1.5 border border-[#2a4a72] bg-[#0f1a2e] text-[#e8f0fb] hover:bg-[#142038] cursor-pointer"
+                    title={currentlyPlaying === rec.id ? "Pause" : "Play"}
+                  >
+                    {currentlyPlaying === rec.id ? (
+                      <div className="w-3 h-3 bg-white" />
+                    ) : (
+                      <Play className="h-3 w-3 text-[#64a8d8] fill-[#64a8d8]" />
+                    )}
+                  </button>
+                  <a
+                    href={rec.url}
+                    download={`nexusdesk-meeting-${rec.id}.webm`}
+                    className="p-1.5 border border-[#2a4a72] bg-[#0f1a2e] text-[#64a8d8] hover:bg-[#142038] flex items-center justify-center cursor-pointer"
+                    title="Download Audio"
+                  >
+                    <Download className="h-3 w-3" />
+                  </a>
+                  <button
+                    onClick={() => toggleTranscript(rec.id)}
+                    className={`p-1.5 border border-[#2a4a72] text-[#64a8d8] hover:bg-[#142038] flex items-center gap-1 cursor-pointer ${rec.showTranscript ? "bg-[#1e3a5f]" : "bg-[#0f1a2e]"}`}
+                    title="View Summary"
+                  >
+                    <Sparkles className="h-3 w-3 text-[#d4a843]" />
+                  </button>
+                  <button
+                    onClick={() => deleteRecording(rec.id)}
+                    className="p-1.5 border border-[#c0443a] bg-[#0f1a2e] text-[#c0443a] hover:bg-[#c0443a]/10 cursor-pointer"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+
+              {rec.showTranscript && (
+                <div className="p-2 border border-[#2a4a72] bg-[#0f1a2e] font-mono text-[10px] text-[#4a7aa8] leading-relaxed space-y-1 animate-none">
+                  <div className="font-bold border-b border-[#2a4a72]/30 pb-1 text-[#64a8d8] uppercase flex items-center gap-1">
+                    <FileText className="h-3 w-3" /> AI Transcription Summary:
+                  </div>
+                  <div>{rec.transcript}</div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ProfessionalDashboard() {
   const { data: tasks = [] } = useListTasks();
@@ -696,6 +900,7 @@ export default function ProfessionalDashboard() {
         </div>
 
         <div className="space-y-5">
+          <MeetingRecorderWidget />
           <ProCard>
             <div className="flex items-center justify-between mb-3 border-b-2 pb-2" style={{ borderColor: CORP_COLORS.border }}>
               <ProLabel>Billable Hours — Client Split</ProLabel>
