@@ -31,7 +31,7 @@ async function main() {
   console.log("Wiping database tables...");
   
   // Truncate tables with CASCADE to handle foreign key relations safely
-  await client.query('TRUNCATE TABLE attendance, grades, events, courses, semesters, tasks, projects, routine, resources CASCADE');
+  await client.query('TRUNCATE TABLE attendance, grades, events, courses, semesters, tasks, projects, milestones, project_logs, cgpa_records, resources CASCADE');
   
   console.log("Database wiped successfully! Clean state restored.");
   await client.end();

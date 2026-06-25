@@ -504,41 +504,6 @@ export default function ProfessionalDashboard() {
     date: m.targetDate ? format(new Date(m.targetDate), "MMM d") : "TBD",
   }));
 
-  // Seeding default data helpers
-  const seedDemoMeetings = () => {
-    const demo = [
-      { time: "09:00", title: "Daily Standup", location: "Team Alpha, PM" },
-      { time: "10:30", title: "Sprint Review", location: "Dev Lead, QA" },
-      { time: "14:00", title: "Client Sync — Acme Corp", location: "Sales, Dev" },
-      { time: "16:00", title: "Roadmap Planning Q3", location: "CTO, Product" },
-    ];
-
-    demo.forEach((m) => {
-      const startDt = new Date(`${todayStr}T${m.time}:00`);
-      const endDt = new Date(startDt.getTime() + 60 * 60 * 1000);
-      createEventMutation.mutate({
-        data: {
-          title: m.title,
-          type: "MEETING",
-          startTime: startDt.toISOString(),
-          endTime: endDt.toISOString(),
-          location: m.location,
-          isRecurring: false,
-        }
-      });
-    });
-  };
-
-  const seedDemoProject = () => {
-    createProject.mutate({
-      data: {
-        name: "Apex Enterprise ERP",
-        description: "Sprint roadmap, milestones, and deliverables tracking system.",
-        status: "ACTIVE",
-        components: ["Cloud Storage API", "React Frontend", "PostgreSQL database"],
-      }
-    });
-  };
 
   const [billableData, setBillableData] = useState<Array<{ client: string; hours: number; budget: number }>>(() => {
     const saved = localStorage.getItem("pro_billable");
