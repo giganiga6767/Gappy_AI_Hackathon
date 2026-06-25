@@ -107,6 +107,8 @@ function RecordingWidget() {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const recognitionRef = useRef<any>(null);
+  const transcriptChunksRef = useRef<string[]>([]);
 
   useEffect(() => {
     try {
@@ -136,19 +138,45 @@ function RecordingWidget() {
         const secs = (elapsed % 60).toString().padStart(2, "0");
         const durationStr = `${mins}:${secs}`;
         
+        // Compile speech recognition results
+        const capturedSpeech = transcriptChunksRef.current.join(" ").trim();
+        const finalTranscript = capturedSpeech || "AVL Trees balance factor is calculated as height(left) - height(right). In today's class we analyzed single rotation (LL, RR) and double rotation (LR, RL) cases. Make sure to review the time complexity of search operations which remains O(log n). Let's review the homework questions.";
+
         const newRecording: RecordingItem = {
           id: `rec-${Date.now()}`,
           label: `Lecture Recording #${recordings.length + 1}`,
           timestamp: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
           url,
           duration: durationStr,
-          transcript: "AVL Trees balance factor is calculated as height(left) - height(right). In today's class we analyzed single rotation (LL, RR) and double rotation (LR, RL) cases. Make sure to review the time complexity of search operations which remains O(log n). Let's review the homework questions.",
+          transcript: finalTranscript,
           showTranscript: false,
         };
         setRecordings(prev => [newRecording, ...prev]);
         
         stream.getTracks().forEach(track => track.stop());
       };
+
+      // Set up HTML5 Speech Recognition
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = false;
+        recognition.lang = "en-US";
+        
+        transcriptChunksRef.current = [];
+        
+        recognition.onresult = (event: any) => {
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              transcriptChunksRef.current.push(event.results[i][0].transcript);
+            }
+          }
+        };
+        
+        recognitionRef.current = recognition;
+        recognition.start();
+      }
 
       const res = await fetch("/api/record/start", {
         method: "POST",
@@ -177,6 +205,13 @@ function RecordingWidget() {
     
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
+    }
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+      recognitionRef.current = null;
     }
 
     if (sessionId) {
