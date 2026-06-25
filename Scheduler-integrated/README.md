@@ -39,7 +39,13 @@ Run `pnpm install` in the root directory:
 pnpm install
 ```
 
-### 3. Start the Development Servers
+### 3. Provision the Database
+Run the setup script to automatically provision a personal database on the cloud Neon cluster and push the Drizzle schema:
+```bash
+node prepare_db.cjs
+```
+
+### 4. Start the Development Servers
 Run the API and Frontend concurrently:
 ```bash
 pnpm --filter @workspace/api-server --filter @workspace/nexusdesk --parallel run dev
