@@ -16,7 +16,7 @@ import { BrutalCard } from "@/components/shared/BrutalCard";
 import { BrutalBadge } from "@/components/shared/BrutalBadge";
 import { BrutalButton } from "@/components/shared/BrutalButton";
 import { Mail, CheckCircle, Circle, Upload, Plus, Trash2, Edit2, Check, X, Mic, MicOff, Play, Download, Sparkles, FileText, Loader2 } from "lucide-react";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend } from "recharts";
 import { getLLMSettings } from "@/components/settings/SettingsModal";
 
 const CORP_COLORS = {
@@ -638,6 +638,7 @@ export default function ProfessionalDashboard() {
 
   const [uploadName, setUploadName] = useState<string | null>(null);
   const [localCharts, setLocalCharts] = useState<any[]>([]);
+  const [localChartTypes, setLocalChartTypes] = useState<Record<number, "bar" | "line" | "area" | "pie" | "radar">>({});
 
   // Action methods
   const saveBillable = (updated: typeof billableData) => {
@@ -744,6 +745,7 @@ export default function ProfessionalDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadName(file.name);
+    setLocalChartTypes({});
 
     const parseCSVText = (csvText: string) => {
       const lines = csvText.split(/\r?\n/).filter(l => l.trim());
@@ -1085,33 +1087,134 @@ export default function ProfessionalDashboard() {
 
             {localCharts.length > 0 && (
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {localCharts.map((chart, idx) => (
-                  <div key={idx} className="border-4 border-ink p-4 bg-paper shadow-brutal-sm">
-                    <div className="font-mono text-[10px] font-bold mb-3 text-amber uppercase">
-                      {chart.title.toUpperCase()}
-                    </div>
-                    <ResponsiveContainer width="100%" height={160}>
-                      {chart.type === "pie" ? (
-                        <PieChart>
-                          <Pie data={chart.data} cx="50%" cy="50%" outerRadius={50} dataKey="value" label={({ name }) => name}>
-                            {chart.data.map((_: any, i: number) => (
-                              <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="#000" strokeWidth={2} />
-                            ))}
-                          </Pie>
-                        </PieChart>
-                      ) : (
-                        <BarChart data={chart.data}>
-                          <XAxis dataKey="name" tick={{ fontSize: 8, fill: "#000", fontFamily: "monospace" }} />
-                          <YAxis tick={{ fontSize: 8, fill: "#000", fontFamily: "monospace" }} />
-                          <Tooltip contentStyle={{ backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontFamily: "monospace", fontSize: 9 }} />
-                          {Object.keys(chart.data[0] || {}).filter(k => k !== "name").map((key, i) => (
-                            <Bar key={key} dataKey={key} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="#000" strokeWidth={2} />
+                {localCharts.map((chart, idx) => {
+                  const currentType = localChartTypes[idx] || chart.type;
+                  const chartColors = [CORP_COLORS.accent, CORP_COLORS.success, CORP_COLORS.warn, CORP_COLORS.danger, "#8b5cf6", "#ec4899", "#3b82f6"];
+                  return (
+                    <div key={idx} className="border-4 border-ink p-4 bg-paper shadow-brutal-sm flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-center mb-3">
+                          <div className="font-mono text-[10px] font-bold text-amber uppercase">
+                            {chart.title.toUpperCase()}
+                          </div>
+                          <span className="font-mono text-[8px] border-2 border-ink px-1 bg-surface font-bold">
+                            {currentType.toUpperCase()}
+                          </span>
+                        </div>
+                        
+                        {/* Interactive Chart Type Selector Controls */}
+                        <div className="flex flex-wrap gap-1 mb-4 border-b border-ink/10 pb-2">
+                          {(["bar", "line", "area", "pie", "radar"] as const).map(t => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setLocalChartTypes(prev => ({ ...prev, [idx]: t }))}
+                              className={`font-mono text-[8px] font-bold border-2 border-ink px-1.5 py-0.5 shadow-brutal-xs hover:translate-y-[-1px] transition-transform cursor-pointer ${
+                                currentType === t
+                                  ? "bg-amber text-ink"
+                                  : "bg-surface text-inkLight hover:bg-paper"
+                              }`}
+                            >
+                              {t.toUpperCase()}
+                            </button>
                           ))}
-                        </BarChart>
-                      )}
-                    </ResponsiveContainer>
-                  </div>
-                ))}
+                        </div>
+                      </div>
+
+                      <div className="w-full flex-grow flex items-center justify-center min-h-[220px]">
+                        {currentType === "pie" && (
+                          <ResponsiveContainer width="100%" height={220}>
+                            <PieChart>
+                              <Pie
+                                data={chart.data}
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={60}
+                                dataKey="value"
+                                nameKey="name"
+                                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                labelLine={true}
+                              >
+                                {chart.data.map((_: any, i: number) => (
+                                  <Cell key={i} fill={chartColors[i % chartColors.length]} stroke="#000" strokeWidth={2} />
+                                ))}
+                              </Pie>
+                              <Tooltip contentStyle={{ backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontFamily: "monospace", fontSize: 9 }} />
+                              <Legend wrapperStyle={{ fontFamily: "monospace", fontSize: 8, marginTop: 5 }} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        )}
+
+                        {currentType === "bar" && (
+                          <ResponsiveContainer width="100%" height={220}>
+                            <BarChart data={chart.data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#CCCCCC" />
+                              <XAxis dataKey="name" tick={{ fontSize: 8, fill: "#000", fontFamily: "monospace" }} />
+                              <YAxis tick={{ fontSize: 8, fill: "#000", fontFamily: "monospace" }} />
+                              <Tooltip contentStyle={{ backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontFamily: "monospace", fontSize: 9 }} />
+                              <Legend wrapperStyle={{ fontFamily: "monospace", fontSize: 8 }} />
+                              {Object.keys(chart.data[0] || {}).filter(k => k !== "name").map((key, i) => (
+                                <Bar key={key} dataKey={key} fill={chartColors[i % chartColors.length]} stroke="#000" strokeWidth={2} />
+                              ))}
+                            </BarChart>
+                          </ResponsiveContainer>
+                        )}
+
+                        {currentType === "line" && (
+                          <ResponsiveContainer width="100%" height={220}>
+                            <LineChart data={chart.data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#CCCCCC" />
+                              <XAxis dataKey="name" tick={{ fontSize: 8, fill: "#000", fontFamily: "monospace" }} />
+                              <YAxis tick={{ fontSize: 8, fill: "#000", fontFamily: "monospace" }} />
+                              <Tooltip contentStyle={{ backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontFamily: "monospace", fontSize: 9 }} />
+                              <Legend wrapperStyle={{ fontFamily: "monospace", fontSize: 8 }} />
+                              {Object.keys(chart.data[0] || {}).filter(k => k !== "name").map((key, i) => (
+                                <Line key={key} type="monotone" dataKey={key} stroke={chartColors[i % chartColors.length]} strokeWidth={3} activeDot={{ r: 5, strokeWidth: 1.5, stroke: "#000" }} />
+                              ))}
+                            </LineChart>
+                          </ResponsiveContainer>
+                        )}
+
+                        {currentType === "area" && (
+                          <ResponsiveContainer width="100%" height={220}>
+                            <AreaChart data={chart.data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                              <defs>
+                                {chartColors.map((color, i) => (
+                                  <linearGradient key={i} id={`proColorUv_${i}`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={color} stopOpacity={0.6}/>
+                                    <stop offset="95%" stopColor={color} stopOpacity={0.0}/>
+                                  </linearGradient>
+                                ))}
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#CCCCCC" />
+                              <XAxis dataKey="name" tick={{ fontSize: 8, fill: "#000", fontFamily: "monospace" }} />
+                              <YAxis tick={{ fontSize: 8, fill: "#000", fontFamily: "monospace" }} />
+                              <Tooltip contentStyle={{ backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontFamily: "monospace", fontSize: 9 }} />
+                              <Legend wrapperStyle={{ fontFamily: "monospace", fontSize: 8 }} />
+                              {Object.keys(chart.data[0] || {}).filter(k => k !== "name").map((key, i) => (
+                                <Area key={key} type="monotone" dataKey={key} stroke={chartColors[i % chartColors.length]} fillOpacity={1} fill={`url(#proColorUv_${i})`} strokeWidth={2} />
+                              ))}
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        )}
+
+                        {currentType === "radar" && (
+                          <ResponsiveContainer width="100%" height={220}>
+                            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chart.data}>
+                              <PolarGrid stroke="#CCCCCC" />
+                              <PolarAngleAxis dataKey="name" tick={{ fontSize: 7, fill: "#000", fontFamily: "monospace" }} />
+                              <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{ fontSize: 7, fill: "#000", fontFamily: "monospace" }} />
+                              {Object.keys(chart.data[0] || {}).filter(k => k !== "name").map((key, i) => (
+                                <Radar key={key} name={key} dataKey={key} stroke={chartColors[i % chartColors.length]} fill={chartColors[i % chartColors.length]} fillOpacity={0.4} />
+                              ))}
+                              <Tooltip contentStyle={{ backgroundColor: "#fff", border: "2px solid #000", color: "#000", fontFamily: "monospace", fontSize: 9 }} />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </ProCard>

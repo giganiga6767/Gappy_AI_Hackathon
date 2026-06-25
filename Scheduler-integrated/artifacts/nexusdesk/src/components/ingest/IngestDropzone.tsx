@@ -7,6 +7,7 @@ import { BrutalBadge } from "../shared/BrutalBadge";
 import { FileText, Upload, Sparkles, X, AlertCircle, Image as ImageIcon, Play, BarChart2 } from "lucide-react";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
+  LineChart, Line, AreaChart, Area, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, CartesianGrid
 } from "recharts";
 import { getLLMSettings } from "@/components/settings/SettingsModal";
 
@@ -128,6 +129,7 @@ export function IngestDropzone() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [image, setImage] = useState<string | null>(null);
   const [charts, setCharts] = useState<ChartData[]>([]);
+  const [selectedChartTypes, setSelectedChartTypes] = useState<Record<number, "bar" | "line" | "area" | "pie" | "radar">>({});
   const [demoLoading, setDemoLoading] = useState(false);
 
   const ingest = useIngestText({
@@ -158,6 +160,7 @@ export function IngestDropzone() {
     setImage(null);
     setResult(null);
     setCharts([]);
+    setSelectedChartTypes({});
 
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -237,6 +240,7 @@ export function IngestDropzone() {
     setFileName(file.name);
     setResult(null);
     setCharts([]);
+    setSelectedChartTypes({});
     const reader = new FileReader();
     reader.onload = (event) => { setImage(event.target?.result as string); setIsParsing(false); };
     reader.onerror = () => { setParseError("Image read failed."); setIsParsing(false); };
@@ -261,6 +265,7 @@ export function IngestDropzone() {
         setFileName(file.name);
         setImage(null);
         setCharts([]);
+        setSelectedChartTypes({});
         setIsParsing(false);
       };
       reader.readAsText(file);
@@ -324,7 +329,7 @@ export function IngestDropzone() {
     }
   };
 
-  const handleClear = () => { setText(""); setFileName(null); setImage(null); setParseError(null); setCharts([]); };
+  const handleClear = () => { setText(""); setFileName(null); setImage(null); setParseError(null); setCharts([]); setSelectedChartTypes({}); };
 
   return (
     <div className="space-y-5">
@@ -348,34 +353,131 @@ export function IngestDropzone() {
             <BarChart2 className="h-4 w-4" /> INTERACTIVE DATA CHARTS
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {charts.map((chart, idx) => (
-              <div key={idx} className="border-2 border-ink bg-paper p-3">
-                <div className="font-mono text-xs font-bold text-inkLight mb-3">{chart.title.toUpperCase()}</div>
-                {chart.type === "pie" ? (
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie data={chart.data} cx="50%" cy="50%" outerRadius={75} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                        {chart.data.map((_, i) => (
-                          <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="#2D2D2D" strokeWidth={2} />
-                        ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ fontFamily: "monospace", fontSize: 10, border: "2px solid #2D2D2D", borderRadius: 0 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={chart.data}>
-                      <XAxis dataKey="name" tick={{ fontSize: 9, fontFamily: "monospace" }} />
-                      <YAxis tick={{ fontSize: 9, fontFamily: "monospace" }} />
-                      <Tooltip contentStyle={{ fontFamily: "monospace", fontSize: 10, border: "2px solid #2D2D2D", borderRadius: 0 }} />
-                      {Object.keys(chart.data[0] || {}).filter(k => k !== "name").map((key, i) => (
-                        <Bar key={key} dataKey={key} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="#2D2D2D" strokeWidth={1} />
+            {charts.map((chart, idx) => {
+              const currentType = selectedChartTypes[idx] || chart.type;
+              return (
+                <div key={idx} className="border-2 border-ink bg-paper p-3 flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="font-mono text-xs font-bold text-inkLight uppercase">{chart.title}</div>
+                      <BrutalBadge variant="neutral" className="text-[8px] font-mono border border-ink py-0 px-1 font-semibold">
+                        {currentType.toUpperCase()}
+                      </BrutalBadge>
+                    </div>
+                    
+                    {/* Interactive Chart Type Selector Controls */}
+                    <div className="flex flex-wrap gap-1 mb-4 border-b border-ink/10 pb-2">
+                      {(["bar", "line", "area", "pie", "radar"] as const).map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setSelectedChartTypes(prev => ({ ...prev, [idx]: t }))}
+                          className={`font-mono text-[8px] font-bold border border-ink px-1.5 py-0.5 shadow-brutal-xs hover:translate-y-[-1px] transition-transform ${
+                            currentType === t
+                              ? "bg-amber text-ink"
+                              : "bg-surface text-inkLight hover:bg-paper"
+                          }`}
+                        >
+                          {t.toUpperCase()}
+                        </button>
                       ))}
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            ))}
+                    </div>
+                  </div>
+
+                  <div className="w-full flex-grow flex items-center justify-center min-h-[220px]">
+                    {currentType === "pie" && (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <PieChart>
+                          <Pie
+                            data={chart.data}
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={65}
+                            dataKey="value"
+                            nameKey="name"
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            labelLine={true}
+                          >
+                            {chart.data.map((_, i) => (
+                              <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="#2D2D2D" strokeWidth={1.5} />
+                            ))}
+                          </Pie>
+                          <Tooltip contentStyle={{ fontFamily: "monospace", fontSize: 9, border: "2px solid #2D2D2D", borderRadius: 0, backgroundColor: "#FFF" }} />
+                          <Legend wrapperStyle={{ fontFamily: "monospace", fontSize: 8, marginTop: 5 }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    )}
+
+                    {currentType === "bar" && (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={chart.data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#CCCCCC" />
+                          <XAxis dataKey="name" tick={{ fontSize: 8, fontFamily: "monospace", fill: "#2D2D2D" }} />
+                          <YAxis tick={{ fontSize: 8, fontFamily: "monospace", fill: "#2D2D2D" }} />
+                          <Tooltip contentStyle={{ fontFamily: "monospace", fontSize: 9, border: "2px solid #2D2D2D", borderRadius: 0, backgroundColor: "#FFF" }} />
+                          <Legend wrapperStyle={{ fontFamily: "monospace", fontSize: 8 }} />
+                          {Object.keys(chart.data[0] || {}).filter(k => k !== "name").map((key, i) => (
+                            <Bar key={key} dataKey={key} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="#2D2D2D" strokeWidth={1.5} />
+                          ))}
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+
+                    {currentType === "line" && (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={chart.data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#CCCCCC" />
+                          <XAxis dataKey="name" tick={{ fontSize: 8, fontFamily: "monospace", fill: "#2D2D2D" }} />
+                          <YAxis tick={{ fontSize: 8, fontFamily: "monospace", fill: "#2D2D2D" }} />
+                          <Tooltip contentStyle={{ fontFamily: "monospace", fontSize: 9, border: "2px solid #2D2D2D", borderRadius: 0, backgroundColor: "#FFF" }} />
+                          <Legend wrapperStyle={{ fontFamily: "monospace", fontSize: 8 }} />
+                          {Object.keys(chart.data[0] || {}).filter(k => k !== "name").map((key, i) => (
+                            <Line key={key} type="monotone" dataKey={key} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2.5} activeDot={{ r: 5, strokeWidth: 1.5, stroke: "#2D2D2D" }} />
+                          ))}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    )}
+
+                    {currentType === "area" && (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <AreaChart data={chart.data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <defs>
+                            {CHART_COLORS.map((color, i) => (
+                              <linearGradient key={i} id={`ingestColorUv_${i}`} x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={color} stopOpacity={0.6}/>
+                                <stop offset="95%" stopColor={color} stopOpacity={0.0}/>
+                              </linearGradient>
+                            ))}
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#CCCCCC" />
+                          <XAxis dataKey="name" tick={{ fontSize: 8, fontFamily: "monospace", fill: "#2D2D2D" }} />
+                          <YAxis tick={{ fontSize: 8, fontFamily: "monospace", fill: "#2D2D2D" }} />
+                          <Tooltip contentStyle={{ fontFamily: "monospace", fontSize: 9, border: "2px solid #2D2D2D", borderRadius: 0, backgroundColor: "#FFF" }} />
+                          <Legend wrapperStyle={{ fontFamily: "monospace", fontSize: 8 }} />
+                          {Object.keys(chart.data[0] || {}).filter(k => k !== "name").map((key, i) => (
+                            <Area key={key} type="monotone" dataKey={key} stroke={CHART_COLORS[i % CHART_COLORS.length]} fillOpacity={1} fill={`url(#ingestColorUv_${i})`} strokeWidth={2} />
+                          ))}
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    )}
+
+                    {currentType === "radar" && (
+                      <ResponsiveContainer width="100%" height={220}>
+                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={chart.data}>
+                          <PolarGrid stroke="#CCCCCC" />
+                          <PolarAngleAxis dataKey="name" tick={{ fontSize: 7, fontFamily: "monospace", fill: "#2D2D2D" }} />
+                          <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{ fontSize: 7, fontFamily: "monospace", fill: "#2D2D2D" }} />
+                          {Object.keys(chart.data[0] || {}).filter(k => k !== "name").map((key, i) => (
+                            <Radar key={key} name={key} dataKey={key} stroke={CHART_COLORS[i % CHART_COLORS.length]} fill={CHART_COLORS[i % CHART_COLORS.length]} fillOpacity={0.4} />
+                          ))}
+                          <Tooltip contentStyle={{ fontFamily: "monospace", fontSize: 9, border: "2px solid #2D2D2D", borderRadius: 0, backgroundColor: "#FFF" }} />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </BrutalCard>
       )}
