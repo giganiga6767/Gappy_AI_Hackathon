@@ -1,92 +1,63 @@
 # 🖥️ NexusDesk (aka Nexus Deck)
-### The Neo-Brutalist Academic Control Center for ECE Students
+### Academic & Professional Command Center
 
-> [!WARNING]
-> **⚠️ PERSONAL VIBE-CODED PROJECT**  
-> This application is built using advanced agentic AI pair programming (Vibe Coding) customized specifically for Sophomore Electronics and Communication Engineering (ECE) students at **National Institute of Technology Karnataka (NITK)**. It is configured for personal academic use and local deployments.
+Welcome to **NexusDesk**—a standalone Academic & Professional Command Center built with a gorgeous **Muted Neo-Brutalist** design. This app integrates a fluid standup/meeting timeline, automated document parsing via AI, course attendance tracking, CGPA simulation, Kanban task boards, project roadmap tracking, and daily routine logs.
+
+---
+
+## ⚡ Easy Setup (One-Click / Single-Command)
+
+To make it as easy as possible for everyone, **no local database installation is required** because the project uses a hosted development database by default.
+
+### 🪟 Windows Users (Standard Command)
+1. Clone or download this repository.
+2. Double-click the **`setup.bat`** file in the root folder, or run it in your terminal:
+   ```cmd
+   setup.bat
+   ```
+   *This script will automatically detect and install Node.js (via winget if missing), install `pnpm`, set up your `.env` configuration, download all dependencies, and launch the site.*
+
+### 🐧 Linux / macOS Users
+1. Clone or download this repository.
+2. Run the launch script in your terminal:
+   ```bash
+   chmod +x launch.sh
+   ./launch.sh
+   ```
+
+Once the script completes, the app will be running at:
+- **Frontend App**: [http://localhost:19211/](http://localhost:19211/)
+- **API Server**: [http://localhost:8080/](http://localhost:8080/)
 
 ---
 
 ## 🛑 What is NexusDesk?
-**NexusDesk** is an all-in-one dashboard designed to manage the demanding schedule of an engineering student. It combines real-time timetable tracking, automated syllabus/calendar ingestion, course grades, attendance risk calculators, hardware project trackers, and daily health metrics into a single, high-contrast dashboard.
+**NexusDesk** is an all-in-one productivity suite that bridges academic and professional workflows. You can toggle between **Student Mode** (classes, timetable, syllabus uploads, CGPA simulators) and **Professional Mode** (billable hours tracker, sprints, standups, client follow-up email templates) using the toggle switcher in the top navigation bar.
 
 ---
 
-## 🎨 Design System: The Brutal Design Law
-NexusDesk features a custom **Muted Neo-Brutalist** aesthetic ensuring high readability, high contrast, and retro physical tactility.
-
-1. **Zero Border Radius**: Globally forced `border-radius: 0px` on all buttons, cards, badges, inputs, and panels.
-2. **Muted Color Palette**:
-   * **Paper** (`#F1F0E8`): Main workspace background.
-   * **Surface** (`#E8E7DF`): Card containers, inputs, and sidebars.
-   * **Ink** (`#2D2D2D`): High-contrast text and thick outlines.
-   * **Terracotta** (`#C4614A`): Warning state and primary accent (rust-red).
-   * **Sage** (`#6B7F52`): Success state and secondary accent (academic green).
-   * **Amber** (`#B8872A`): Warning and conditional markers.
-3. **Flat Offset Shadows**: Solid offset shadows with `0px` blur:
-   * `shadow-brutal` (4px offset)
-   * `shadow-brutal-sm` (2px offset)
-   * `shadow-brutal-lg` (6px offset)
-4. **Structured Typography**:
-   * Headings: `Space Grotesk`
-   * Body Text: `Inter`
-   * Numerical Data & Attendance Metrics: `JetBrains Mono`
-5. **No Emojis in the UI**: Strict constraint for a clean, structural layout.
+## 🎨 Brutal Design Rules
+NexusDesk features a high-contrast, tactile design system:
+1. **Zero Border Radius**: Flat blocks with `border-radius: 0px` globally.
+2. **Neo-Brutalist Colors**: High-contrast texts, clean backgrounds (`#F1F0E8` / `#E8E7DF`), and strong borders (`#2D2D2D`).
+3. **Offset Shadows**: Solid block offset shadows (`shadow-brutal`) instead of fuzzy blurs.
 
 ---
 
-## 🚀 Core Features
-
-### 📅 1. Fluid Timeline & Live Cursor
-* An hourly vertical schedule grid matching the active day.
-* A live red cursor tracking the current time relative to classes.
-* One-click Attended/Missed toggle buttons directly on timeline cards.
-
-### 🧠 2. AI Ingest Engine & Document Parser
-* **PDF/Text Dropzone**: Ingests timetables, schedules, or syllabus texts.
-* **Image OCR & Vision Ingest**: Drag and drop screenshots of timetables or exam dates, parsed automatically using Gemini Vision or local `llama3.2-vision`.
-* **Cognitive Switch**: Toggle between offline local Ollama parsing or high-speed Gemini Cloud processing.
-
-### 📚 3. ECE Course & Attendance Ledger
-* **75% Attendance Guard**: Gauges are styled in terracotta if attendance drops below the NITK minimum 75% threshold.
-* **Attendance Risk Calculator**: Displays the exact number of classes you can safely skip, or how many consecutive classes you must attend to recover.
-
-### 📋 4. Kanban Task Board
-* Standard columns: `TODO`, `IN_PROGRESS`, `BLOCKED`, and `DONE`.
-* Specialized categories: `ACADEMICS`, `HARDWARE_DEV` (project builds/PCB/soldering), `ROUTINE`, and `PERSONAL`.
-
-### 🛠️ 5. Hardware Project Tracker
-* Specially built for hardware prototypes.
-* Tracks developmental phases: *Simulation, Breadboarding, Schematic Capture, PCB Manufacturing, and Testing/Assembly*.
-* Component inventory checklist to log required parts (NE555, Op-Amps, microcontrollers).
-
-### 🧮 6. CGPA Simulator & Daily Routine Tracker
-* SGPA and CGPA calculators weighted by course credits.
-* Health tracker logs daily sleep cycles, active workouts, and steps.
+## 📂 Project Structure
+```
+├── artifacts/
+│   ├── api-server/       # Express Backend API server
+│   └── nexusdesk/        # React + Vite Frontend application
+├── lib/
+│   └── db/               # PostgreSQL Database schemas (Drizzle ORM)
+├── .env.example          # Template environment configurations
+├── setup.bat             # Single-command setup for Windows
+└── launch.sh             # Launch script for Unix-like systems
+```
 
 ---
 
-## 🛠️ Getting Started (Local Setup)
-
-The application lives in this [Scheduler](file:///home/niranjan/Desktop/Scheduler) folder.
-
-### 1. Configuration
-Create a `.env` file in the root of the directory:
-```env
-DATABASE_URL=your_postgresql_database_url
-GEMINI_API_KEY=your_gemini_api_key
-OLLAMA_BASE_URL=http://localhost:11434
-```
-
-### 2. Running Locally
-Run the helper script from the folder to spin up the Express backend and React frontend:
-```bash
-./launch.sh
-```
-The application will launch and be accessible at: **[http://localhost:19211/](http://localhost:19211/)**
-
-### 3. Database Maintenance
-To wipe tables and reset the database state:
-```bash
-node lib/db/wipe_db.cjs
-```
+## 🧠 Cognitive Ingestion (AI Syllabus Scan)
+If you wish to parse custom files or timetables using the AI cognitive scanner, you can enter your **Gemini API key** in the Settings icon (top-right gear) on the interface, or supply it in the `.env` file as `GEMINI_API_KEY`. 
+If you do not have an API key, you can click **"LOAD DEMO SESSION"** on the Ingest page to populate the app with realistic demo data instantly without any keys.
