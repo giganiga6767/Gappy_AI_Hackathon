@@ -4,9 +4,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { PersonaProvider, usePersona } from "@/context/PersonaContext";
+import { WebSocketProvider } from "@/components/websocket/WebSocketProvider";
+
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
 
+import LoginPage from "@/pages/LoginPage";
 import DashboardPage from "@/pages/DashboardPage";
 import CoursesPage from "@/pages/CoursesPage";
 import CourseDetailPage from "@/pages/CourseDetailPage";
@@ -21,12 +26,19 @@ import PlannerPage from "@/pages/PlannerPage";
 const queryClient = new QueryClient();
 
 function Layout({ children }: { children: React.ReactNode }) {
+  const { mode } = usePersona();
+  const isPro = mode === "professional";
+
   return (
-    <div className="min-h-screen bg-paper flex">
+    <div
+      className={`min-h-screen flex transition-colors duration-300 ${
+        isPro ? "bg-[#070f1e]" : "bg-paper"
+      }`}
+    >
       <Sidebar />
       <div className="flex-1 ml-56 flex flex-col h-screen overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto">
+        <main className={`flex-1 overflow-y-auto ${isPro ? "bg-[#070f1e]" : "bg-paper"}`}>
           {children}
         </main>
       </div>
@@ -55,16 +67,34 @@ function Router() {
   );
 }
 
+function AppInner() {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return (
+    <WebSocketProvider>
+      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+        <Layout>
+          <Router />
+        </Layout>
+      </WouterRouter>
+    </WebSocketProvider>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Layout>
-            <Router />
-          </Layout>
-        </WouterRouter>
-        <Toaster />
+        <AuthProvider>
+          <PersonaProvider>
+            <AppInner />
+            <Toaster />
+          </PersonaProvider>
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

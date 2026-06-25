@@ -11,10 +11,13 @@ import cgpaRouter from "./cgpa";
 import resourcesRouter from "./resources";
 import ingestRouter from "./ingest";
 import dashboardRouter from "./dashboard";
+import authRouter from "./auth";
 import recordRouter from "./record";
 
 const router: IRouter = Router();
 
+router.use(authRouter);
+router.use(recordRouter);
 router.use(healthRouter);
 router.use(semestersRouter);
 router.use(coursesRouter);
@@ -27,6 +30,5 @@ router.use(cgpaRouter);
 router.use(resourcesRouter);
 router.use(ingestRouter);
 router.use(dashboardRouter);
-router.use(recordRouter);
 
 export default router;

@@ -8,7 +8,7 @@ const router = Router();
 const OLLAMA_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 
 async function callOllama(prompt: string, base64Image?: string): Promise<string> {
-  const model = base64Image ? "llama3.2-vision" : "phi3";
+  const model = base64Image ? "llama3.2-vision" : "llama3";
   const cleanImage = base64Image ? base64Image.replace(/^data:image\/\w+;base64,/, "") : undefined;
 
   const response = await fetch(`${OLLAMA_URL}/api/generate`, {
@@ -103,97 +103,6 @@ async function callGemini(prompt: string, apiKey: string, base64Image?: string):
   throw new Error(`All Gemini models failed. Last error: ${lastError?.message || lastError}`);
 }
 
-async function callOpenAI(prompt: string, apiKey: string, model: string = "gpt-4o-mini", base64Image?: string): Promise<string> {
-  const messages: any[] = [];
-  if (base64Image) {
-    const cleanImage = base64Image.replace(/^data:image\/\w+;base64,/, "");
-    const mimeType = base64Image.match(/^data:(image\/\w+);base64,/)?.[1] || "image/png";
-    messages.push({
-      role: "user",
-      content: [
-        { type: "text", text: prompt },
-        {
-          type: "image_url",
-          image_url: {
-            url: `data:${mimeType};base64,${cleanImage}`
-          }
-        }
-      ]
-    });
-  } else {
-    messages.push({ role: "user", content: prompt });
-  }
-
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      response_format: { type: "json_object" },
-      temperature: 0.1
-    }),
-    signal: AbortSignal.timeout(60000),
-  });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`OpenAI API error: ${response.status} - ${errText}`);
-  }
-
-  const data = await response.json() as any;
-  const text = data.choices?.[0]?.message?.content;
-  if (!text) throw new Error("Empty response from OpenAI API");
-  return text.trim();
-}
-
-async function callAnthropic(prompt: string, apiKey: string, model: string = "claude-3-5-sonnet-20241022", base64Image?: string): Promise<string> {
-  const content: any[] = [];
-  if (base64Image) {
-    const match = base64Image.match(/^data:(image\/\w+);base64,(.+)$/);
-    const mimeType = match?.[1] || "image/png";
-    const data = match?.[2] || base64Image;
-    content.push({
-      type: "image",
-      source: {
-        type: "base64",
-        media_type: mimeType,
-        data: data
-      }
-    });
-  }
-  content.push({ type: "text", text: prompt });
-
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01"
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 4000,
-      messages: [{ role: "user", content }],
-      temperature: 0.1
-    }),
-    signal: AbortSignal.timeout(60000),
-  });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Anthropic API error: ${response.status} - ${errText}`);
-  }
-
-  const data = await response.json() as any;
-  const text = data.content?.[0]?.text;
-  if (!text) throw new Error("Empty response from Anthropic API");
-  return text.trim();
-}
-
 function buildUniversalPrompt(rawText: string, currentDate: string, hasImage: boolean): string {
   return `You are an AI assistant designed to parse college academic documents, screenshots of timetables, academic calendars, syllabus, tasks, and schedules.
 Analyze the provided input (which can be text, an image, or both) and extract all relevant information to populate the database tables: Semesters, Courses, Schedules/Events, Calendar Events, and Tasks.
@@ -214,7 +123,7 @@ Please extract:
 2. Courses: All courses or subjects listed. Extract their subject code (e.g., EC302), full name (e.g., Analog Circuits), room number, faculty name, and credits.
 3. Recurring Class Schedule: Regular weekly classes, labs, and tutorials. For each class, extract the subject code, day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday), start hour and minute, end hour and minute, and location/room.
 4. Specific Calendar Events / Holidays / Exams: Non-recurring events. E.g. Holidays (Independence Day, breaks, festivals), Mid-sem/End-sem exams, registration dates. Extract title, type ("EXAM", "BREAK", "MEETING", "PERSONAL"), start date (YYYY-MM-DD), end date (YYYY-MM-DD), and description.
-5. Tasks / Action Items: Homework, assignments, syllabus milestones, and reminders. Extract title, category ("ACADEMICS", "HARDWARE_DEV", "PERSONAL"), priority ("LOW", "MEDIUM", "HIGH", "CRITICAL"), due date (YYYY-MM-DD), subject code, a confidenceScore (1 to 5) of the extraction accuracy, and the exact reasoningQuote (the sentence from the input document that triggered this task creation).
+5. Tasks / Action Items: Homework, assignments, syllabus milestones, and reminders. Extract title, category ("ACADEMICS", "HARDWARE_DEV", "PERSONAL"), priority ("LOW", "MEDIUM", "HIGH", "CRITICAL"), due date (YYYY-MM-DD), and subject code.
 
 Respond ONLY with a valid JSON object matching this TypeScript interface (do NOT wrap in markdown blocks, do not write any additional text):
 interface Output {
@@ -258,8 +167,6 @@ interface Output {
     priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
     dueDate?: string; // YYYY-MM-DD
     subjectCode?: string; // matches one of the courses
-    confidenceScore: number; // 1 to 5 confidence score of extraction accuracy
-    reasoningQuote: string; // The exact quote/sentence from the document that triggered this task
   }>;
   mutation?: {
     action: "CANCEL" | "RESCHEDULE" | "ATTENDANCE" | "TASK_COMPLETE" | "CREATE_HOLIDAY";
@@ -287,26 +194,16 @@ router.post("/ingest", async (req, res): Promise<void> => {
     return;
   }
 
-  // 1. Determine the provider, model, and API key
-  const llmProvider = (provider || "gemini").toLowerCase();
-  const activeModel = req.body.model;
+  // 1. Determine the provider and API key
+  const llmProvider = provider === "antigravity" || provider === "gemini" ? "antigravity" : "ollama";
+  const geminiApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.ANTIGRAVITY_API_KEY;
 
-  let activeApiKey = "";
-  if (llmProvider === "gemini" || llmProvider === "antigravity") {
-    activeApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.ANTIGRAVITY_API_KEY || "";
-  } else if (llmProvider === "openai") {
-    activeApiKey = apiKey || process.env.OPENAI_API_KEY || "";
-  } else if (llmProvider === "anthropic") {
-    activeApiKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
-  }
-
-  // If a cloud provider is selected and no API key is set, fail with key required
-  if (["gemini", "antigravity", "openai", "anthropic"].includes(llmProvider) && !activeApiKey) {
+  if (llmProvider === "antigravity" && !geminiApiKey) {
     res.status(400).json({
       success: false,
       action: "API_KEY_REQUIRED",
       recordsCreated: 0,
-      error: `${llmProvider.toUpperCase()} API key is required. Please configure it in Settings or set it on the server.`,
+      error: "Gemini API key is required when using Antigravity provider. Please provide it in settings.",
     });
     return;
   }
@@ -317,7 +214,7 @@ router.post("/ingest", async (req, res): Promise<void> => {
     const currentDate = new Date().toISOString().split("T")[0];
     const prompt = buildUniversalPrompt(rawText || "", currentDate, !!image);
 
-    if (llmProvider === "lemma") {
+    if (provider === "lemma") {
       const { LemmaClient } = await import("lemma-sdk");
       const lemmaClient = new LemmaClient({
         apiUrl: process.env.LEMMA_API_URL || "http://127-0-0-1.sslip.io:8711",
@@ -349,15 +246,10 @@ router.post("/ingest", async (req, res): Promise<void> => {
         throw new Error("Timeout waiting for structured output from Lemma Agent");
       }
       rawResponse = assistantMsgText;
-    } else if (llmProvider === "openai") {
-      rawResponse = await callOpenAI(prompt, activeApiKey, activeModel || "gpt-4o-mini", image);
-    } else if (llmProvider === "anthropic") {
-      rawResponse = await callAnthropic(prompt, activeApiKey, activeModel || "claude-3-5-sonnet-20241022", image);
-    } else if (llmProvider === "ollama") {
-      rawResponse = await callOllama(prompt, image);
+    } else if (llmProvider === "antigravity") {
+      rawResponse = await callGemini(prompt, geminiApiKey!, image);
     } else {
-      // Default / fallback to Gemini Cloud
-      rawResponse = await callGemini(prompt, activeApiKey, image);
+      rawResponse = await callOllama(prompt, image);
     }
 
   } catch (err: any) {
@@ -616,8 +508,6 @@ router.post("/ingest", async (req, res): Promise<void> => {
           priority: task.priority || "MEDIUM",
           dueDate: task.dueDate || null,
           linkedCourseId: courseId,
-          confidenceScore: task.confidenceScore || null,
-          reasoningQuote: task.reasoningQuote || null,
         });
         recordsCreated++;
       }
