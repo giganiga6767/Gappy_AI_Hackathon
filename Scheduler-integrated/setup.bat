@@ -58,6 +58,15 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+:: Step 5: Automatically provision isolated database and apply schema
+echo [*] Provisioning personal database...
+node prepare_db.cjs
+if %errorlevel% neq 0 (
+    echo [ERROR] Database provisioning failed.
+    pause
+    exit /b 1
+)
+
 echo.
 echo ===================================================
 echo [SUCCESS] All dependencies installed successfully!

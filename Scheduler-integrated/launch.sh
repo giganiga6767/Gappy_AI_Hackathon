@@ -7,13 +7,15 @@ cd "$CDIR"
 # Add Node.js 20 to the path so Vite and pnpm run with a compatible version
 export PATH="/home/niranjan/.nvm/versions/node/v20.20.2/bin:$PATH"
 
-# Load environment variables
-if [ -f .env ]; then
-  export $(grep -v '^#' .env | xargs)
-else
-  echo ".env file not found! Please create it."
+# Run database provisioning and schema migration
+node prepare_db.cjs
+if [ $? -ne 0 ]; then
+  echo "Database preparation failed. Exiting."
   exit 1
 fi
+
+# Load environment variables
+export $(grep -v '^#' .env | xargs)
 
 echo "Starting NexusDesk Academic Command Center..."
 
