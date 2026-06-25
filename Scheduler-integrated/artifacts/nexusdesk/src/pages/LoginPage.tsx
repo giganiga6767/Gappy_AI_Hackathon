@@ -5,14 +5,14 @@ import { SiGoogle, SiGithub } from "react-icons/si";
 import { Zap, UserCheck } from "lucide-react";
 
 export default function LoginPage() {
-  const { loginAsGuest, loginWithGoogle, loginWithGitHub, isAuthenticated } = useAuth();
+  const { loginAsGuest, loginWithGoogle, isAuthenticated } = useAuth();
   const [selectedRole, setSelectedRole] = useState<"student" | "professional">(() => {
     return (localStorage.getItem("nexusdesk_persona_mode") as any) || "student";
   });
 
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash.includes("auth=google") || hash.includes("auth=github")) {
+    if (hash.includes("auth=google")) {
       const params = new URLSearchParams(hash.slice(1));
       const userStr = params.get("user");
       if (userStr) {
@@ -41,11 +41,6 @@ export default function LoginPage() {
   const handleGoogleLogin = () => {
     localStorage.setItem("nexusdesk_pre_login_role", selectedRole);
     loginWithGoogle();
-  };
-
-  const handleGitHubLogin = () => {
-    localStorage.setItem("nexusdesk_pre_login_role", selectedRole);
-    loginWithGitHub();
   };
 
   if (isAuthenticated) return null;
@@ -126,20 +121,13 @@ export default function LoginPage() {
               <div className="flex-1 h-[2px] bg-ink" />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
               <button
                 onClick={handleGoogleLogin}
-                className="flex items-center justify-center gap-2 border-2 border-ink bg-paper text-ink font-bold px-4 py-3 shadow-brutal hover:shadow-brutal-sm hover:-translate-x-[1px] hover:-translate-y-[1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all duration-100"
+                className="w-full flex items-center justify-center gap-2 border-2 border-ink bg-paper text-ink font-bold px-4 py-3 shadow-brutal hover:shadow-brutal-sm hover:-translate-x-[1px] hover:-translate-y-[1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all duration-100"
               >
                 <SiGoogle className="h-4 w-4 text-terracotta" />
                 <span className="font-mono text-sm font-bold">Google</span>
-              </button>
-              <button
-                onClick={handleGitHubLogin}
-                className="flex items-center justify-center gap-2 border-2 border-ink bg-paper text-ink font-bold px-4 py-3 shadow-brutal hover:shadow-brutal-sm hover:-translate-x-[1px] hover:-translate-y-[1px] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all duration-100"
-              >
-                <SiGithub className="h-4 w-4" />
-                <span className="font-mono text-sm font-bold">GitHub</span>
               </button>
             </div>
           </div>

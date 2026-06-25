@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 
-export type UserRole = "guest" | "google" | "github";
+export type UserRole = "guest" | "google";
 
 export interface AuthUser {
   id: string;
@@ -15,7 +15,6 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   loginAsGuest: () => void;
   loginWithGoogle: () => void;
-  loginWithGitHub: () => void;
   logout: () => void;
 }
 
@@ -52,16 +51,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = "/api/auth/google";
   }, []);
 
-  const loginWithGitHub = useCallback(() => {
-    window.location.href = "/api/auth/github";
-  }, []);
-
   const logout = useCallback(() => {
     persist(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, loginAsGuest, loginWithGoogle, loginWithGitHub, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, loginAsGuest, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );
