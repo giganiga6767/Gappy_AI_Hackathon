@@ -336,7 +336,6 @@ router.post("/ingest", async (req, res): Promise<void> => {
             startTime: start,
             endTime: end,
             isRecurring: true,
-            recurrencePattern: `WEEKLY:${item.dayOfWeek.toUpperCase()}`,
             courseId: cId,
           });
           recordsCreated++;
