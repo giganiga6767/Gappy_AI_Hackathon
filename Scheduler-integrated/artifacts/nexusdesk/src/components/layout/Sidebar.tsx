@@ -35,7 +35,7 @@ export function Sidebar() {
           NexusDesk
         </h1>
         <p className="font-mono text-xs mt-1 text-inkLight">
-          v0.1.0 // {isStudent ? "NITK_ECE" : "PROFESSIONAL"}
+          v0.1.0 // {isStudent ? "STUDENT" : "PROFESSIONAL"}
         </p>
         {isPro && (
           <div className="mt-2 font-mono text-[9px] border-2 border-ink bg-amberLight text-amber px-2 py-0.5 inline-block font-bold">

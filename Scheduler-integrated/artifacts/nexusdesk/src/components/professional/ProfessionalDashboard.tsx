@@ -1,6 +1,16 @@
 import { useState, useRef } from "react";
 import { format } from "date-fns";
-import { useListTasks } from "@workspace/api-client-react";
+import { 
+  useListTasks,
+  useListEvents,
+  useCreateEvent,
+  useDeleteEvent,
+  useListProjects,
+  useGetProject,
+  useCreateProject,
+  useAddMilestone,
+  useUpdateMilestone
+} from "@workspace/api-client-react";
 import { BrutalCard } from "@/components/shared/BrutalCard";
 import { BrutalBadge } from "@/components/shared/BrutalBadge";
 import { BrutalButton } from "@/components/shared/BrutalButton";
@@ -261,27 +271,146 @@ export default function ProfessionalDashboard() {
   const { data: tasks = [] } = useListTasks();
   const proTasks = tasks.filter(t => ["SAGE_SPRINT", "PRODUCTION_OPS", "CLIENT_CRM", "LOGISTICS"].includes(t.category));
 
-  // Load / Save state helpers
-  const [meetings, setMeetings] = useState<Array<{ time: string; title: string; participants: string[]; status: "done" | "in-progress" | "pending" }>>(() => {
-    const saved = localStorage.getItem("pro_meetings");
-    return saved ? JSON.parse(saved) : [
-      { time: "09:00", title: "Daily Standup", participants: ["Team Alpha", "PM"], status: "done" },
-      { time: "10:30", title: "Sprint Review", participants: ["Dev Lead", "QA"], status: "done" },
-      { time: "14:00", title: "Client Sync — Acme Corp", participants: ["Sales", "Dev"], status: "in-progress" },
-      { time: "16:00", title: "Roadmap Planning Q3", participants: ["CTO", "Product"], status: "pending" },
-    ];
+  // Projects & Milestones from DB
+  const { data: projects = [], refetch: refetchProjects } = useListProjects();
+  const firstProject = projects[0];
+  const { data: projectDetails, refetch: refetchProjectDetails } = useGetProject(firstProject?.id || "");
+  const dbMilestones = projectDetails?.milestones || [];
+
+  // Today's Meetings from DB
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const { data: dbEvents = [], refetch: refetchEvents } = useListEvents({ date: todayStr });
+
+  // Mutations
+  const createEventMutation = useCreateEvent({
+    mutation: {
+      onSuccess: () => {
+        refetchEvents();
+      }
+    }
   });
 
-  const [milestones, setMilestones] = useState<Array<{ label: string; phase: string; done: boolean; date: string }>>(() => {
-    const saved = localStorage.getItem("pro_milestones");
-    return saved ? JSON.parse(saved) : [
-      { label: "Sprint 12", phase: "DEV", done: true, date: "Jun 10" },
-      { label: "QA Sign-off", phase: "QA", done: true, date: "Jun 18" },
-      { label: "Staging Deploy", phase: "DEV", done: true, date: "Jun 22" },
-      { label: "UAT Testing", phase: "QA", done: false, date: "Jun 28" },
-      { label: "Production Release", phase: "RELEASE", done: false, date: "Jul 5" },
-    ];
+  const deleteEventMutation = useDeleteEvent({
+    mutation: {
+      onSuccess: () => {
+        refetchEvents();
+      }
+    }
   });
+
+  const createProject = useCreateProject({
+    mutation: {
+      onSuccess: (newProj) => {
+        refetchProjects();
+        // Seed default milestones for this new project
+        const defaultMilestones = [
+          { title: "Sprint 12 Roadmap", description: "DEV", targetDate: "2026-06-10", status: "COMPLETED" },
+          { title: "QA Sign-off", description: "QA", targetDate: "2026-06-18", status: "COMPLETED" },
+          { title: "Staging Deploy", description: "DEV", targetDate: "2026-06-22", status: "COMPLETED" },
+          { title: "UAT Testing", description: "QA", targetDate: "2026-06-28", status: "PENDING" },
+          { title: "Production Release", description: "RELEASE", targetDate: "2026-07-05", status: "PENDING" },
+        ];
+        
+        defaultMilestones.forEach(m => {
+          addMilestoneMutation.mutate({
+            projectId: newProj.id,
+            data: {
+              title: m.title,
+              description: m.description,
+              targetDate: m.targetDate,
+              status: m.status,
+            }
+          });
+        });
+      }
+    }
+  });
+
+  const addMilestoneMutation = useAddMilestone({
+    mutation: {
+      onSuccess: () => {
+        if (firstProject) refetchProjectDetails();
+      }
+    }
+  });
+
+  const updateMilestoneMutation = useUpdateMilestone({
+    mutation: {
+      onSuccess: () => {
+        if (firstProject) refetchProjectDetails();
+      }
+    }
+  });
+
+  // Parse today's meetings
+  const meetingsList = dbEvents
+    .filter(e => e.type === "MEETING" || e.type === "STANDUP" || !e.courseId)
+    .map(event => {
+      const startTime = new Date(event.startTime);
+      const endTime = new Date(event.endTime);
+      const timeStr = format(startTime, "HH:mm");
+      
+      const now = new Date();
+      let status: "done" | "in-progress" | "pending" = "pending";
+      if (endTime < now) {
+        status = "done";
+      } else if (startTime <= now && now <= endTime) {
+        status = "in-progress";
+      }
+
+      return {
+        id: event.id,
+        time: timeStr,
+        title: event.title,
+        participants: event.location ? [event.location] : ["Self"],
+        status,
+      };
+    });
+
+  // Parse project milestones
+  const milestonesList = dbMilestones.map(m => ({
+    id: m.id,
+    label: m.title,
+    phase: m.description || "DEV",
+    done: m.status === "COMPLETED",
+    date: m.targetDate ? format(new Date(m.targetDate), "MMM d") : "TBD",
+  }));
+
+  // Seeding default data helpers
+  const seedDemoMeetings = () => {
+    const demo = [
+      { time: "09:00", title: "Daily Standup", location: "Team Alpha, PM" },
+      { time: "10:30", title: "Sprint Review", location: "Dev Lead, QA" },
+      { time: "14:00", title: "Client Sync — Acme Corp", location: "Sales, Dev" },
+      { time: "16:00", title: "Roadmap Planning Q3", location: "CTO, Product" },
+    ];
+
+    demo.forEach((m) => {
+      const startDt = new Date(`${todayStr}T${m.time}:00`);
+      const endDt = new Date(startDt.getTime() + 60 * 60 * 1000);
+      createEventMutation.mutate({
+        data: {
+          title: m.title,
+          type: "MEETING",
+          startTime: startDt.toISOString(),
+          endTime: endDt.toISOString(),
+          location: m.location,
+          isRecurring: false,
+        }
+      });
+    });
+  };
+
+  const seedDemoProject = () => {
+    createProject.mutate({
+      data: {
+        name: "Apex Enterprise ERP",
+        description: "Sprint roadmap, milestones, and deliverables tracking system.",
+        status: "ACTIVE",
+        components: ["ESP32", "React", "Node.js"],
+      }
+    });
+  };
 
   const [billableData, setBillableData] = useState<Array<{ client: string; hours: number; budget: number }>>(() => {
     const saved = localStorage.getItem("pro_billable");
@@ -317,7 +446,6 @@ export default function ProfessionalDashboard() {
   const [newTime, setNewTime] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [newParticipants, setNewParticipants] = useState("");
-  const [newStatus, setNewStatus] = useState<"done" | "in-progress" | "pending">("pending");
 
   const [showAddMilestone, setShowAddMilestone] = useState(false);
   const [newMileLabel, setNewMileLabel] = useState("");
@@ -333,20 +461,9 @@ export default function ProfessionalDashboard() {
   const [localCharts, setLocalCharts] = useState<any[]>([]);
 
   // Action methods
-  const saveMeetings = (updated: typeof meetings) => {
-    setMeetings(updated);
-    localStorage.setItem("pro_meetings", JSON.stringify(updated));
-  };
-
-  const saveMilestones = (updated: typeof milestones) => {
-    setMilestones(updated);
-    localStorage.setItem("pro_milestones", JSON.stringify(updated));
-  };
-
   const saveBillable = (updated: typeof billableData) => {
     setBillableData(updated);
     localStorage.setItem("pro_billable", JSON.stringify(updated));
-    // Auto-update W5 trend value when billable hours change!
     const total = updated.reduce((sum, item) => sum + item.hours, 0);
     const updatedTrend = [...trendData];
     if (updatedTrend.length > 0) {
@@ -359,49 +476,67 @@ export default function ProfessionalDashboard() {
   const handleAddMeeting = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTime || !newTitle) return;
-    const parts = newParticipants.split(",").map(p => p.trim()).filter(p => p);
-    const updated = [...meetings, { time: newTime, title: newTitle, participants: parts.length ? parts : ["Self"], status: newStatus }];
-    saveMeetings(updated);
+    
+    const startDt = new Date(`${todayStr}T${newTime}:00`);
+    const endDt = new Date(startDt.getTime() + 60 * 60 * 1000);
+    
+    createEventMutation.mutate({
+      data: {
+        title: newTitle,
+        type: "MEETING",
+        startTime: startDt.toISOString(),
+        endTime: endDt.toISOString(),
+        location: newParticipants || "Self",
+        isRecurring: false,
+      }
+    });
+
     setNewTime("");
     setNewTitle("");
     setNewParticipants("");
-    setNewStatus("pending");
     setShowAddMeeting(false);
   };
 
-  const cycleStatus = (index: number) => {
-    const statuses: Array<"pending" | "in-progress" | "done"> = ["pending", "in-progress", "done"];
-    const updated = [...meetings];
-    const currentIdx = statuses.indexOf(updated[index].status);
-    updated[index].status = statuses[(currentIdx + 1) % statuses.length];
-    saveMeetings(updated);
-  };
-
-  const deleteMeeting = (index: number) => {
-    const updated = meetings.filter((_, i) => i !== index);
-    saveMeetings(updated);
+  const deleteMeeting = (id: string) => {
+    deleteEventMutation.mutate({ eventId: id });
   };
 
   const handleAddMilestone = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMileLabel || !newMileDate) return;
-    const updated = [...milestones, { label: newMileLabel, phase: newMilePhase.toUpperCase(), done: false, date: newMileDate }];
-    saveMilestones(updated);
+    if (!newMileLabel || !newMileDate || !firstProject) return;
+    
+    let finalDateStr = newMileDate;
+    try {
+      const year = new Date().getFullYear();
+      const parsedDate = new Date(`${newMileDate} ${year}`);
+      if (!isNaN(parsedDate.getTime())) {
+        finalDateStr = parsedDate.toISOString().split("T")[0];
+      }
+    } catch {}
+
+    addMilestoneMutation.mutate({
+      projectId: firstProject.id,
+      data: {
+        title: newMileLabel,
+        description: newMilePhase.toUpperCase(),
+        targetDate: finalDateStr,
+        status: "PENDING",
+      }
+    });
+
     setNewMileLabel("");
     setNewMilePhase("DEV");
     setNewMileDate("");
     setShowAddMilestone(false);
   };
 
-  const toggleMilestoneDone = (index: number) => {
-    const updated = [...milestones];
-    updated[index].done = !updated[index].done;
-    saveMilestones(updated);
-  };
-
-  const deleteMilestone = (index: number) => {
-    const updated = milestones.filter((_, i) => i !== index);
-    saveMilestones(updated);
+  const toggleMilestoneDone = (milestoneId: string, currentStatus: string) => {
+    updateMilestoneMutation.mutate({
+      milestoneId,
+      data: {
+        status: currentStatus === "COMPLETED" ? "PENDING" : "COMPLETED",
+      }
+    });
   };
 
   const handleAddBillable = (e: React.FormEvent) => {
@@ -528,7 +663,7 @@ export default function ProfessionalDashboard() {
           { label: "SPRINT TASKS", value: proTasks.filter(t => t.status !== "DONE").length, color: "#b45309" },
           { label: "DONE TODAY", value: proTasks.filter(t => t.status === "DONE").length, color: "#166534" },
           { label: "BILLABLE HRS", value: `${totalBillable}h`, color: "#b45309" },
-          { label: "MEETINGS", value: meetings.length, color: "#52525b" },
+          { label: "MEETINGS", value: meetingsList.length, color: "#52525b" },
         ].map(stat => (
           <ProCard key={stat.label}>
             <div className="font-mono text-[10px] font-bold mb-2 text-inkLight">{stat.label}</div>
@@ -553,11 +688,13 @@ export default function ProfessionalDashboard() {
               </BrutalButton>
             </div>
 
+
+
             {showAddMeeting && (
               <form onSubmit={handleAddMeeting} className="mb-4 p-4 border-2 border-ink bg-surfaceLight/50 space-y-3 shadow-brutal-sm">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div className="space-y-1">
-                    <label className="font-mono text-[9px] text-inkLight block">TIME</label>
+                    <label className="font-mono text-[9px] text-inkLight block">TIME (HH:MM)</label>
                     <input
                       type="text"
                       placeholder="e.g. 09:00"
@@ -582,23 +719,11 @@ export default function ProfessionalDashboard() {
                     <label className="font-mono text-[9px] text-inkLight block">PARTICIPANTS</label>
                     <input
                       type="text"
-                      placeholder="Dev, PM (comma separated)"
+                      placeholder="e.g. Sales, Dev"
                       value={newParticipants}
                       onChange={e => setNewParticipants(e.target.value)}
                       className="w-full border-2 border-ink bg-paper px-2 py-1 font-mono text-xs focus:outline-none"
                     />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-mono text-[9px] text-inkLight block">STATUS</label>
-                    <select
-                      value={newStatus}
-                      onChange={e => setNewStatus(e.target.value as any)}
-                      className="w-full border-2 border-ink bg-paper px-2 py-1 font-mono text-xs focus:outline-none h-[28px]"
-                    >
-                      <option value="pending" className="bg-paper text-ink">PENDING</option>
-                      <option value="in-progress" className="bg-paper text-ink">IN-PROGRESS</option>
-                      <option value="done" className="bg-paper text-ink">DONE</option>
-                    </select>
                   </div>
                 </div>
                 <div className="flex justify-end">
@@ -608,10 +733,10 @@ export default function ProfessionalDashboard() {
             )}
 
             <div className="space-y-2">
-              {meetings.map((item, i) => (
+              {meetingsList.map((item) => (
                 <div
-                  key={i}
-                  className="flex items-start gap-3 p-3 border-l-4 border-2 border-ink shadow-brutal-sm group relative"
+                  key={item.id}
+                  className="flex items-start gap-3 p-3 border-l-4 border-2 border-ink shadow-brutal-sm group relative bg-paper text-ink"
                   style={{
                     borderLeftColor: item.status === "done" ? "#166534" : item.status === "in-progress" ? "#b45309" : "#000",
                     backgroundColor: item.status === "done" ? "#f2fcf5" : item.status === "in-progress" ? "#fef8f0" : "#fff",
@@ -627,20 +752,18 @@ export default function ProfessionalDashboard() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => cycleStatus(i)}
-                      className="font-mono text-[10px] font-bold border-2 px-2 py-0.5 hover:opacity-85 transition-opacity uppercase cursor-pointer shadow-brutal-xs"
+                    <span
+                      className="font-mono text-[10px] font-bold border-2 px-2 py-0.5 uppercase shadow-brutal-xs"
                       style={{
                         color: item.status === "done" ? "#166534" : item.status === "in-progress" ? "#b45309" : "#52525b",
                         borderColor: item.status === "done" ? "#166534" : item.status === "in-progress" ? "#b45309" : "#000",
                         backgroundColor: "#fff",
                       }}
-                      title="Click to cycle status"
                     >
-                      {item.status.toUpperCase()}
-                    </button>
+                      {item.status}
+                    </span>
                     <button
-                      onClick={() => deleteMeeting(i)}
+                      onClick={() => deleteMeeting(item.id)}
                       className="text-[#b91c1c] opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-[#b91c1c]/10 border-2 border-transparent hover:border-[#b91c1c] cursor-pointer"
                       title="Delete Meeting"
                     >
@@ -649,9 +772,18 @@ export default function ProfessionalDashboard() {
                   </div>
                 </div>
               ))}
-              {meetings.length === 0 && (
-                <div className="font-mono text-xs text-center py-6 text-inkLight">
-                  NO MEETINGS SCHEDULED
+              {meetingsList.length === 0 && (
+                <div className="text-center py-6 border-2 border-dashed border-inkFaint space-y-3 bg-surface/30">
+                  <div className="font-mono text-xs text-inkLight">
+                    NO MEETINGS IN DATABASE
+                  </div>
+                  <BrutalButton
+                    onClick={seedDemoMeetings}
+                    className="text-xs py-1.5 px-3"
+                    disabled={createEventMutation.isPending}
+                  >
+                    {createEventMutation.isPending ? "INITIALIZING..." : "SEED DEMO MEETINGS"}
+                  </BrutalButton>
                 </div>
               )}
             </div>
@@ -713,42 +845,53 @@ export default function ProfessionalDashboard() {
               </form>
             )}
 
-            <div className="relative pt-4 pb-2">
-              <div
-                className="absolute left-0 right-0 top-9 h-[4px] bg-ink"
-              />
-              <div className="flex justify-between relative">
-                {milestones.map((m, i) => (
-                  <div key={i} className="flex flex-col items-center gap-2 flex-1 group relative">
-                    <button
-                      onClick={() => toggleMilestoneDone(i)}
-                      className={`w-9 h-9 border-4 flex items-center justify-center font-bold text-xs relative z-10 cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-brutal-sm ${
-                        m.done ? "bg-sage text-paper border-ink" : "bg-surface text-ink border-ink"
-                      }`}
-                      title="Click to toggle status"
-                    >
-                      {m.done ? "✓" : i + 1}
-                    </button>
-                    <div className="text-center space-y-0.5">
-                      <div className="font-mono text-[10px] font-bold flex items-center justify-center gap-1 text-ink">
-                        <span style={{ color: m.done ? "#166534" : "#000" }}>{m.label}</span>
-                        <button
-                          onClick={() => deleteMilestone(i)}
-                          className="text-[#b91c1c] opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 font-bold cursor-pointer"
-                          title="Delete Milestone"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                      <div className="font-mono text-[9px] border-2 border-ink px-1.5 inline-block font-bold bg-amberLight text-amber">
-                        {m.phase}
-                      </div>
-                      <div className="font-mono text-[9px] text-inkLight font-semibold">{m.date}</div>
-                    </div>
-                  </div>
-                ))}
+            {projects.length === 0 ? (
+              <div className="text-center py-8 border-2 border-dashed border-inkFaint bg-surface/30 space-y-3">
+                <div className="font-mono text-xs text-inkLight">
+                  NO ACTIVE PROJECTS IN DATABASE
+                </div>
+                <BrutalButton
+                  onClick={seedDemoProject}
+                  className="text-xs py-1.5 px-3"
+                  disabled={createProject.isPending}
+                >
+                  {createProject.isPending ? "INITIALIZING..." : "INITIALIZE DEMO PROJECT"}
+                </BrutalButton>
               </div>
-            </div>
+            ) : (
+              <div className="relative pt-4 pb-2">
+                <div className="absolute left-0 right-0 top-9 h-[4px] bg-ink" />
+                <div className="flex justify-between relative">
+                  {milestonesList.map((m, i) => (
+                    <div key={m.id || i} className="flex flex-col items-center gap-2 flex-1 group relative">
+                      <button
+                        onClick={() => toggleMilestoneDone(m.id, m.done ? "COMPLETED" : "PENDING")}
+                        className={`w-9 h-9 border-4 flex items-center justify-center font-bold text-xs relative z-10 cursor-pointer hover:scale-105 active:scale-95 transition-transform shadow-brutal-sm ${
+                          m.done ? "bg-sage text-paper border-ink" : "bg-surface text-ink border-ink"
+                        }`}
+                        title="Click to toggle status"
+                      >
+                        {m.done ? "✓" : i + 1}
+                      </button>
+                      <div className="text-center space-y-0.5">
+                        <div className="font-mono text-[10px] font-bold flex items-center justify-center gap-1 text-ink">
+                          <span style={{ color: m.done ? "#166534" : "#000" }}>{m.label}</span>
+                        </div>
+                        <div className="font-mono text-[9px] border-2 border-ink px-1.5 inline-block font-bold bg-amberLight text-amber">
+                          {m.phase}
+                        </div>
+                        <div className="font-mono text-[9px] text-inkLight font-semibold">{m.date}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {milestonesList.length === 0 && (
+                    <div className="w-full text-center py-4 font-mono text-xs text-inkLight">
+                      NO MILESTONES DEFINED FOR THIS PROJECT
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </ProCard>
 
           {/* Excel / CSV Live Analytics Card */}

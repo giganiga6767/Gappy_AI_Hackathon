@@ -58,10 +58,12 @@ export default function LoginPage() {
             NexusDesk
           </h1>
           <p className="font-mono text-sm text-inkLight mt-2 tracking-widest uppercase">
-            Academic Command Center // NITK
+            {selectedRole === "professional" 
+              ? "Professional Command Center // CORP"
+              : "Academic Command Center // STUDENT"}
           </p>
           <div className="mt-3 font-mono text-xs text-inkFaint border-2 border-ink inline-block px-3 py-1 bg-surface">
-            v0.1.0 // BUILD_2026
+            v0.1.0 // {selectedRole === "professional" ? "PRO_BUILD" : "STUDENT_BUILD"}
           </div>
         </div>
 
@@ -85,7 +87,7 @@ export default function LoginPage() {
                     : "bg-paper text-ink hover:bg-surfaceHover border-r-4 border-ink"
                 }`}
               >
-                NITK STUDENT
+                STUDENT
               </button>
               <button
                 type="button"
@@ -153,7 +155,7 @@ export default function LoginPage() {
             <div className="space-y-1">
               <div className="font-mono text-xs font-bold text-ink uppercase">Demo Instructions</div>
               <ul className="font-mono text-[10px] text-inkLight space-y-1 list-disc list-inside">
-                <li>Choose your Workspace (NITK Student or Professional) *before* signing in</li>
+                <li>Choose your Workspace (Student or Professional) *before* signing in</li>
                 <li>Click "Quick Dev Bypass" for instant login (recommended for judges)</li>
                 <li>Navigate to INGEST and click "Load Demo Session" to seed realistic database records</li>
                 <li>To switch workspaces, log out and select the other workspace option here</li>
