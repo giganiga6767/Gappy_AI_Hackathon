@@ -344,7 +344,7 @@ export default function ProfessionalDashboard() {
 
   // Parse today's meetings
   const meetingsList = dbEvents
-    .filter(e => e.type === "MEETING" || e.type === "STANDUP" || !e.courseId)
+    .filter(e => (e.type === "MEETING" || e.type === "STANDUP" || e.type === "CLIENT_SYNC" || e.type === "ROADMAP" || e.type === "FOLLOW_UP") && !e.courseId)
     .map(event => {
       const startTime = new Date(event.startTime);
       const endTime = new Date(event.endTime);
@@ -407,7 +407,7 @@ export default function ProfessionalDashboard() {
         name: "Apex Enterprise ERP",
         description: "Sprint roadmap, milestones, and deliverables tracking system.",
         status: "ACTIVE",
-        components: ["ESP32", "React", "Node.js"],
+        components: ["Cloud Storage API", "React Frontend", "PostgreSQL database"],
       }
     });
   };

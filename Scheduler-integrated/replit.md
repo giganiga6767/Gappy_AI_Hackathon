@@ -1,6 +1,6 @@
-# NexusDesk — NITK ECE Management System
+# NexusDesk — Academic & Professional Command Center
 
-NexusDesk is a privacy-first academic command center for NIT Karnataka ECE sophomores: course attendance tracking, timetable with AI ingest, CGPA simulation, kanban task management, hardware project tracking, and daily health routines — all in a Muted Neo Brutalist design.
+NexusDesk is a privacy-first academic & professional command center: course attendance tracking, timetable with AI ingest, CGPA simulation, kanban task management, hardware/software project tracking, and daily health routines — all in a Muted Neo Brutalist design.
 
 ## Run & Operate
 

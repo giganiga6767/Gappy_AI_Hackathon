@@ -78,7 +78,7 @@ export default function ProjectsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="font-mono text-[10px] font-bold">COMPONENTS (comma separated)</label>
-                <input type="text" name="components" className="w-full border-2 border-ink bg-paper p-2 font-mono text-sm" placeholder="ESP32, React, Node.js" />
+                <input type="text" name="components" className="w-full border-2 border-ink bg-paper p-2 font-mono text-sm" placeholder="React, AWS, Node.js" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">

@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "NexusDesk — NITK"
+title = "NexusDesk"
 version = "1.0.0"
 id = "artifacts/nexusdesk"
 router = "path"
