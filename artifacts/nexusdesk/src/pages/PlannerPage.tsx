@@ -248,7 +248,20 @@ export default function PlannerPage() {
     }
   };
 
-  // Ingest Uploader Processing
+  const readPdfAsDataUrl = (file: File) => {
+    const dataReader = new FileReader();
+    dataReader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      setIngestImage(dataUrl);
+      setIsParsing(false);
+    };
+    dataReader.onerror = () => {
+      setParseError("Failed to read PDF for upload.");
+      setIsParsing(false);
+    };
+    dataReader.readAsDataURL(file);
+  };
+
   const handleParsePdf = (file: File) => {
     setIsParsing(true);
     setParseError(null);
@@ -262,7 +275,9 @@ export default function PlannerPage() {
         const typedarray = new Uint8Array(event.target?.result as ArrayBuffer);
         const pdfjsLib = (window as any).pdfjsLib;
         if (!pdfjsLib) {
-          throw new Error("PDF.js library is not loaded. Check internet connection.");
+          console.warn("PDF.js library is not loaded. Falling back to direct PDF upload.");
+          readPdfAsDataUrl(file);
+          return;
         }
         
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -278,19 +293,19 @@ export default function PlannerPage() {
         }
 
         if (!extractedText.trim()) {
-          throw new Error("Diagnostic: PDF has no digital text stream. This is a scanned image PDF. Please upload a screenshot (PNG/JPG) of the calendar instead so the vision AI can parse it!");
+          console.warn("PDF has no digital text. Falling back to direct PDF upload.");
+          readPdfAsDataUrl(file);
+          return;
         }
 
         setIngestText((prev) => {
           const newText = extractedText.trim();
           return prev ? prev + "\n\n" + newText : newText;
         });
-      } catch (err: any) {
-        console.error("PDF parse error:", err);
-        setParseError(err.message || "Failed to parse PDF file.");
-        setIngestFileName(null);
-      } finally {
         setIsParsing(false);
+      } catch (err: any) {
+        console.warn("PDF parse failed, falling back to direct PDF upload:", err);
+        readPdfAsDataUrl(file);
       }
     };
     reader.onerror = () => {

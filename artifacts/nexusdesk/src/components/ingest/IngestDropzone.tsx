@@ -56,6 +56,20 @@ export function IngestDropzone() {
     }
   });
 
+  const readPdfAsDataUrl = (file: File) => {
+    const dataReader = new FileReader();
+    dataReader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      setImage(dataUrl);
+      setIsParsing(false);
+    };
+    dataReader.onerror = () => {
+      setParseError("Failed to read PDF for upload.");
+      setIsParsing(false);
+    };
+    dataReader.readAsDataURL(file);
+  };
+
   const handleParsePdf = (file: File) => {
     setIsParsing(true);
     setParseError(null);
@@ -69,7 +83,9 @@ export function IngestDropzone() {
         const typedarray = new Uint8Array(event.target?.result as ArrayBuffer);
         const pdfjsLib = (window as any).pdfjsLib;
         if (!pdfjsLib) {
-          throw new Error("PDF.js library is not yet loaded in your browser. Please try again in a few seconds.");
+          console.warn("PDF.js library is not loaded. Falling back to direct PDF upload.");
+          readPdfAsDataUrl(file);
+          return;
         }
         
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -85,19 +101,19 @@ export function IngestDropzone() {
         }
 
         if (!extractedText.trim()) {
-          throw new Error("PDF was parsed but no text was extracted (might be scanned images).");
+          console.warn("PDF has no digital text. Falling back to direct PDF upload.");
+          readPdfAsDataUrl(file);
+          return;
         }
 
         setText((prev) => {
           const newText = extractedText.trim();
           return prev ? prev + "\n\n" + newText : newText;
         });
-      } catch (err: any) {
-        console.error("PDF parse error:", err);
-        setParseError(err.message || "Failed to parse PDF file.");
-        setFileName(null);
-      } finally {
         setIsParsing(false);
+      } catch (err: any) {
+        console.warn("PDF parse failed, falling back to direct PDF upload:", err);
+        readPdfAsDataUrl(file);
       }
     };
     reader.onerror = () => {

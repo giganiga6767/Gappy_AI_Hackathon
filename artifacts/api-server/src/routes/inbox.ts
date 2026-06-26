@@ -103,41 +103,76 @@ router.post("/inbox/capture", async (req, res): Promise<void> => {
 
 // Helper for Gemini / Ollama call
 async function callGemini(prompt: string, apiKey: string, base64Image?: string): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-  const parts: any[] = [{ text: prompt }];
+  const models = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-flash-latest"];
+  let lastError: Error | null = null;
 
-  if (base64Image) {
-    const cleanImage = base64Image.replace(/^data:image\/\w+;base64,/, "");
-    parts.push({
-      inlineData: {
-        mimeType: "image/png",
-        data: cleanImage
+  for (const model of models) {
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (attempts < maxAttempts) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const parts: any[] = [{ text: prompt }];
+
+        if (base64Image) {
+          const match = base64Image.match(/^data:(image\/\w+|application\/pdf);base64,(.+)$/);
+          if (match) {
+            parts.push({
+              inlineData: {
+                mimeType: match[1],
+                data: match[2]
+              }
+            });
+          } else {
+            parts.push({
+              inlineData: {
+                mimeType: "image/png",
+                data: base64Image.replace(/^data:(image\/\w+|application\/pdf);base64,/, "")
+              }
+            });
+          }
+        }
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.1,
+            },
+          }),
+          signal: AbortSignal.timeout(180000),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Gemini API error (${model}): ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json() as any;
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) {
+          throw new Error(`Empty response from Gemini API (${model})`);
+        }
+        return text.trim();
+      } catch (err: any) {
+        lastError = err;
+        attempts++;
+        if (err.name === "TimeoutError" || (err.message && (err.message.includes("503") || err.message.includes("429") || err.message.includes("timeout")))) {
+          console.warn(`Gemini model ${model} temporary error or timeout (attempt ${attempts}/${maxAttempts}): ${err.message}. Retrying...`);
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
+        } else {
+          break;
+        }
       }
-    });
+    }
+    console.warn(`Model ${model} failed, falling back to next available model...`);
   }
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.1,
-      },
-    }),
-    signal: AbortSignal.timeout(60000),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Gemini API error: ${response.status} - ${text}`);
-  }
-
-  const data = await response.json() as any;
-  const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!resultText) throw new Error("Empty response from Gemini");
-  return resultText.trim();
+  throw new Error(`All Gemini models failed. Last error: ${lastError?.message || lastError}`);
 }
 
 async function callOllama(prompt: string, base64Image?: string): Promise<string> {
@@ -262,13 +297,15 @@ router.post("/inbox/:id/understand", async (req, res): Promise<void> => {
         url: `/api/recordings/download?path=${encodeURIComponent(item.filePath)}`
       });
 
-    } else if (item.type === "image") {
+    } else if (item.type === "image" || item.type === "pdf") {
       if (!item.filePath || !fs.existsSync(item.filePath)) {
-        res.status(400).json({ error: "Image file is missing." });
+        res.status(400).json({ error: `${item.type === "pdf" ? "PDF" : "Image"} file is missing.` });
         return;
       }
-      const imageBuffer = fs.readFileSync(item.filePath);
-      base64Image = `data:image/png;base64,${imageBuffer.toString("base64")}`;
+      const fileBuffer = fs.readFileSync(item.filePath);
+      const isPdf = item.type === "pdf";
+      const mimeType = isPdf ? "application/pdf" : "image/png";
+      base64Image = `data:${mimeType};base64,${fileBuffer.toString("base64")}`;
     }
 
     // Step B: Ask LLM to extract entity relations in our simplified product model

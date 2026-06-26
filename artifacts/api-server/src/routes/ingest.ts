@@ -31,7 +31,7 @@ async function callOllama(prompt: string, base64Image?: string): Promise<string>
 }
 
 async function callGemini(prompt: string, apiKey: string, base64Image?: string): Promise<string> {
-  const models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro"];
+  const models = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-flash-latest"];
   let lastError: Error | null = null;
 
   for (const model of models) {
@@ -45,7 +45,7 @@ async function callGemini(prompt: string, apiKey: string, base64Image?: string):
         const parts: any[] = [{ text: prompt }];
 
         if (base64Image) {
-          const match = base64Image.match(/^data:(image\/\w+);base64,(.+)$/);
+          const match = base64Image.match(/^data:(image\/\w+|application\/pdf);base64,(.+)$/);
           if (match) {
             parts.push({
               inlineData: {
@@ -57,7 +57,7 @@ async function callGemini(prompt: string, apiKey: string, base64Image?: string):
             parts.push({
               inlineData: {
                 mimeType: "image/png",
-                data: base64Image
+                data: base64Image.replace(/^data:(image\/\w+|application\/pdf);base64,/, "")
               }
             });
           }
@@ -73,7 +73,7 @@ async function callGemini(prompt: string, apiKey: string, base64Image?: string):
               temperature: 0.1,
             },
           }),
-          signal: AbortSignal.timeout(60000),
+          signal: AbortSignal.timeout(180000),
         });
 
         if (!response.ok) {
@@ -90,8 +90,8 @@ async function callGemini(prompt: string, apiKey: string, base64Image?: string):
       } catch (err: any) {
         lastError = err;
         attempts++;
-        if (err.message && (err.message.includes("503") || err.message.includes("429"))) {
-          console.warn(`Gemini model ${model} temporary error (attempt ${attempts}/${maxAttempts}): ${err.message}. Retrying...`);
+        if (err.name === "TimeoutError" || (err.message && (err.message.includes("503") || err.message.includes("429") || err.message.includes("timeout")))) {
+          console.warn(`Gemini model ${model} temporary error or timeout (attempt ${attempts}/${maxAttempts}): ${err.message}. Retrying...`);
           await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
         } else {
           break;
@@ -108,7 +108,7 @@ function buildUniversalPrompt(rawText: string, currentDate: string, hasImage: bo
   return `You are an AI assistant designed to parse college academic documents, screenshots of timetables, academic calendars, syllabus, tasks, and schedules.
 Analyze the provided input (which can be text, an image, or both) and extract all relevant information to populate the database tables: Semesters, Courses, Schedules/Events, Calendar Events, and Tasks.
 Current Date context: ${currentDate}
-${hasImage ? "You have been provided with an image (screenshot of a timetable or academic calendar). Carefully extract the text from the image." : ""}
+${hasImage ? "You have been provided with an image or PDF document. Carefully extract the text from it." : ""}
 
 Additionally, check if the input contains a request or announcement to change schedules, cancel classes, reschedule timetables, record attendance, mark a date off as a holiday/break, or complete a task.
 Example WhatsApp messages or quick-pastes:
