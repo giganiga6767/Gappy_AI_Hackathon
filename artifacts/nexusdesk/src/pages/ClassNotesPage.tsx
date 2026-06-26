@@ -196,8 +196,8 @@ export default function ClassNotesPage() {
       ctx.createMediaStreamSource(new MediaStream(displayAudio)).connect(dest);
     }
     // Keep originals for cleanup
-    micStream.getTracks().forEach((t) => extraTracksRef.current.push(t));
-    displayStream.getTracks().forEach((t) => extraTracksRef.current.push(t));
+    micStream.getTracks().forEach((t: MediaStreamTrack) => extraTracksRef.current.push(t));
+    displayStream.getTracks().forEach((t: MediaStreamTrack) => extraTracksRef.current.push(t));
 
     return dest.stream;
   };

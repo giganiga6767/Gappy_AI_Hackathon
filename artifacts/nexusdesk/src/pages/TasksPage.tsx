@@ -1,15 +1,51 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useListTasks, useCreateTask, useUpdateTask, useDeleteTask, getListTasksQueryKey } from "@workspace/api-client-react";
+import {
+  useListTasks,
+  useCreateTask,
+  getListTasksQueryKey,
+} from "@workspace/api-client-react";
 import { KanbanBoard } from "@/components/tasks/KanbanBoard";
+import { BrutalButton } from "@/components/shared/BrutalButton";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
 
 const CATEGORIES = ["ACADEMICS", "HARDWARE_DEV", "PERSONAL", "PROJECT", "ADMIN"] as const;
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 
+interface TriageChange {
+  id: string;
+  title: string;
+  oldPriority: string;
+  newPriority: string;
+  newStatus: string;
+  rationale: string;
+}
+
 export default function TasksPage() {
   const { data: tasks = [], isLoading } = useListTasks();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
+  const [triageOpen, setTriageOpen] = useState(false);
+  const [triageLoading, setTriageLoading] = useState(false);
+  const [applyLoading, setApplyLoading] = useState(false);
+  const [triageChanges, setTriageChanges] = useState<TriageChange[]>([]);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -27,7 +63,7 @@ export default function TasksPage() {
         setForm({ title: "", description: "", dueDate: "", category: "ACADEMICS", priority: "MEDIUM" });
         setAddError(null);
       },
-      onError: (e: any) => setAddError(e?.message || "Failed to create task"),
+      onError: (e: unknown) => setAddError(e instanceof Error ? e.message : "Failed to create task"),
     },
   });
 
@@ -48,12 +84,51 @@ export default function TasksPage() {
     });
   };
 
+  const handleTriagePreview = async () => {
+    setTriageLoading(true);
+    setTriageOpen(true);
+    try {
+      const res = await fetch("/api/agent/triage/preview");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Triage preview failed");
+      setTriageChanges(data.changes || []);
+    } catch (err: unknown) {
+      toast({
+        title: "Triage failed",
+        description: err instanceof Error ? err.message : "Could not preview triage",
+        variant: "destructive",
+      });
+      setTriageOpen(false);
+    } finally {
+      setTriageLoading(false);
+    }
+  };
+
+  const handleTriageApply = async () => {
+    setApplyLoading(true);
+    try {
+      const res = await fetch("/api/agent/triage", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Apply failed");
+      toast({ title: "Triage applied", description: `${data.updated} tasks updated` });
+      setTriageOpen(false);
+      queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
+    } catch (err: unknown) {
+      toast({
+        title: "Apply failed",
+        description: err instanceof Error ? err.message : "Could not apply triage",
+        variant: "destructive",
+      });
+    } finally {
+      setApplyLoading(false);
+    }
+  };
+
   const pendingCount = tasks.filter((t) => t.status !== "DONE").length;
   const doneCount = tasks.filter((t) => t.status === "DONE").length;
 
   return (
     <div className="p-6 h-full flex flex-col max-w-7xl mx-auto">
-      {/* Header */}
       <div className="flex items-end justify-between border-b-4 border-ink pb-4 mb-6 shrink-0">
         <div>
           <h1 className="text-4xl font-heading font-extrabold uppercase tracking-tighter">TASKS</h1>
@@ -61,15 +136,77 @@ export default function TasksPage() {
             ACTION_ITEMS // {pendingCount} PENDING, {doneCount} DONE
           </p>
         </div>
-        <button
-          onClick={() => setIsAdding(!isAdding)}
-          className="px-4 py-2 bg-ink text-paper font-mono text-xs font-bold border-2 border-ink shadow-brutal active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
-        >
-          {isAdding ? "✕ CANCEL" : "+ ADD TASK"}
-        </button>
+        <div className="flex gap-2">
+          <BrutalButton
+            variant="sage"
+            onClick={handleTriagePreview}
+            disabled={triageLoading}
+            className="flex items-center gap-2"
+          >
+            {triageLoading && <Spinner className="size-3" />}
+            AI Triage
+          </BrutalButton>
+          <button
+            onClick={() => setIsAdding(!isAdding)}
+            className="px-4 py-2 bg-ink text-paper font-mono text-xs font-bold border-2 border-ink shadow-brutal active:shadow-none active:translate-x-[2px] active:translate-y-[2px]"
+          >
+            {isAdding ? "✕ CANCEL" : "+ ADD TASK"}
+          </button>
+        </div>
       </div>
 
-      {/* Add Task Form */}
+      <Dialog open={triageOpen} onOpenChange={setTriageOpen}>
+        <DialogContent className="max-w-4xl border-2 border-ink bg-paper">
+          <DialogHeader>
+            <DialogTitle className="font-heading uppercase">AI Triage Preview</DialogTitle>
+          </DialogHeader>
+          {triageLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Spinner className="size-8" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto border-2 border-ink max-h-96">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-mono text-[10px]">Task Name</TableHead>
+                    <TableHead className="font-mono text-[10px]">Old Priority</TableHead>
+                    <TableHead className="font-mono text-[10px]">New Priority</TableHead>
+                    <TableHead className="font-mono text-[10px]">New Status</TableHead>
+                    <TableHead className="font-mono text-[10px]">Rationale</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {triageChanges.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell className="text-sm font-bold">{c.title}</TableCell>
+                      <TableCell className="font-mono text-xs">{c.oldPriority}</TableCell>
+                      <TableCell className="font-mono text-xs">{c.newPriority}</TableCell>
+                      <TableCell className="font-mono text-xs">{c.newStatus}</TableCell>
+                      <TableCell className="text-xs text-inkLight">{c.rationale}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <BrutalButton variant="default" onClick={() => setTriageOpen(false)}>
+              Cancel
+            </BrutalButton>
+            <BrutalButton
+              variant="primary"
+              onClick={handleTriageApply}
+              disabled={applyLoading || triageLoading || triageChanges.length === 0}
+              className="flex items-center gap-2"
+            >
+              {applyLoading && <Spinner className="size-3" />}
+              Apply All
+            </BrutalButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {isAdding && (
         <div className="bg-surface border-2 border-ink p-4 mb-6 shrink-0">
           <span className="font-mono text-xs font-bold text-inkLight block uppercase tracking-wider mb-3">
@@ -147,7 +284,6 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* Kanban Board */}
       {isLoading ? (
         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (

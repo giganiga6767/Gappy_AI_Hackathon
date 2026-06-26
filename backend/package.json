@@ -9,6 +9,7 @@
     "dev": "nodemon --watch src --ext ts --exec tsx src/index.ts"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.4",
     "chokidar": "^3.6.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

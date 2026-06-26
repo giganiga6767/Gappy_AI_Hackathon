@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import studentRoutes from "./routes/student.routes";
 import enterpriseRoutes from "./routes/enterprise.routes";
+import agentRoutes from "./routes/agent.routes";
+import digestRoutes from "./routes/digest.routes";
 import { errorHandler } from "./middleware/errorHandler";
 
 export function startServer(port: number): Promise<void> {
@@ -28,6 +30,8 @@ export function startServer(port: number): Promise<void> {
 
   app.use("/api/student", studentRoutes);
   app.use("/api/enterprise", enterpriseRoutes);
+  app.use("/api/agent", agentRoutes);
+  app.use("/api/digest", digestRoutes);
 
   app.use(errorHandler);
 

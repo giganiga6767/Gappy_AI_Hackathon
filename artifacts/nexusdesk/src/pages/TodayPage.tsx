@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
+import { StudyPlannerCard } from "@/components/dashboard/StudyPlannerCard";
+import { MonthAheadSection } from "@/components/dashboard/MonthAheadSection";
+import { WeeklyDigestSection } from "@/components/dashboard/WeeklyDigestSection";
 
 interface Event {
   id: string;
@@ -187,6 +190,8 @@ export default function TodayPage() {
         </div>
       )}
 
+      <StudyPlannerCard />
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Card 1: Today's Sessions */}
         <div className="bg-surface border-2 border-ink p-4 space-y-3">
@@ -341,6 +346,9 @@ export default function TodayPage() {
           )}
         </div>
       </div>
+
+      <MonthAheadSection />
+      <WeeklyDigestSection />
     </div>
   );
 }

@@ -6,6 +6,7 @@ const navItems = [
   { name: "CALENDAR", path: "/planner" },
   { name: "COURSES", path: "/courses" },
   { name: "TASKS", path: "/tasks" },
+  { name: "RESOURCES", path: "/resources" },
   { name: "CGPA", path: "/cgpa" },
   { name: "PROJECTS", path: "/projects" },
   { name: "EXPORT", path: "/export" },

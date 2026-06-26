@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
+import { db, client } from "@workspace/db";
 import {
   semestersTable,
   coursesTable,
@@ -8,18 +8,39 @@ import {
   attendanceTable,
   cgpaRecordsTable,
   gradesTable,
+  artifactsTable,
+  resourcesTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const router = Router();
 
+async function ensureExtraColumns(): Promise<void> {
+  const alters = [
+    "ALTER TABLE tasks ADD COLUMN triageNote TEXT",
+    "ALTER TABLE resources ADD COLUMN description TEXT",
+    "ALTER TABLE resources ADD COLUMN source TEXT",
+  ];
+  for (const sql of alters) {
+    try {
+      await client.execute(sql);
+    } catch {
+      // Column may already exist
+    }
+  }
+}
+
 router.post("/demo/seed", async (req, res): Promise<void> => {
   try {
+    await ensureExtraColumns();
+
     // Clear existing data in correct order (FKs)
     await db.delete(gradesTable);
     await db.delete(attendanceTable);
     await db.delete(eventsTable);
     await db.delete(tasksTable);
+    await db.delete(resourcesTable);
+    await db.delete(artifactsTable);
     await db.delete(cgpaRecordsTable);
     await db.delete(coursesTable);
     await db.delete(semestersTable);
@@ -348,6 +369,107 @@ router.post("/demo/seed", async (req, res): Promise<void> => {
       { semesterNumber: 4, semesterName: "Sem 4 (2025)", sgpa: 8.1, creditsEarned: 21, totalCredits: 21, isProjected: false },
     ]);
 
+    // ── 8. AI Study Plan Tasks ────────────────────────────────────────
+    const studyPlanDates = [
+      todayStr,
+      new Date(today.getTime() + 1 * 86400000).toISOString().split("T")[0],
+      new Date(today.getTime() + 2 * 86400000).toISOString().split("T")[0],
+      new Date(today.getTime() + 3 * 86400000).toISOString().split("T")[0],
+      new Date(today.getTime() + 4 * 86400000).toISOString().split("T")[0],
+    ];
+    const studyPlanTasks = [
+      { title: "Revise AVL tree rotations — CS301", course: "CS301", priority: "CRITICAL" },
+      { title: "Practice Fourier series problems — MA201", course: "MA201", priority: "HIGH" },
+      { title: "Review Butterworth filter design — EC201", course: "EC201", priority: "HIGH" },
+      { title: "SQL join exercises — CS302", course: "CS302", priority: "MEDIUM" },
+      { title: "Presentation outline draft — HS101", course: "HS101", priority: "MEDIUM" },
+    ];
+    for (let i = 0; i < studyPlanTasks.length; i++) {
+      const sp = studyPlanTasks[i];
+      await client.execute({
+        sql: `INSERT INTO tasks (id, title, due_date, category, priority, status, tags, linked_course_id, created_at, updated_at)
+              VALUES (?, ?, ?, 'ACADEMICS', ?, 'TODO', ?, ?, ?, ?)`,
+        args: [
+          crypto.randomUUID(),
+          sp.title,
+          studyPlanDates[i],
+          sp.priority,
+          JSON.stringify(["ai-study-plan"]),
+          courseMap[sp.course]?.id ?? null,
+          Date.now(),
+          Date.now(),
+        ],
+      });
+    }
+
+    // ── 9. Sample AI Resources (3 per course) ─────────────────────────
+    const sampleResources = [
+      { course: "CS301", title: "AVL Trees Explained", url: "https://www.youtube.com/watch?v=example-dsa", type: "VIDEO", desc: "Visual guide to tree rotations" },
+      { course: "CS301", title: "CLRS Chapter 13 Notes", url: "https://mitpress.mit.edu/books/introduction-algorithms", type: "LINK", desc: "Official textbook reference" },
+      { course: "CS301", title: "LeetCode Tree Practice", url: "https://leetcode.com/tag/tree/", type: "LINK", desc: "Balanced BST problem set" },
+      { course: "EC201", title: "Signals & Systems MIT OCW", url: "https://ocw.mit.edu/courses/6-003-signals-and-systems-fall-2011/", type: "LINK", desc: "Full lecture series" },
+      { course: "EC201", title: "Filter Design Tutorial", url: "https://www.youtube.com/watch?v=example-filters", type: "VIDEO", desc: "Butterworth filter walkthrough" },
+      { course: "EC201", title: "MATLAB Filter Examples", url: "https://www.mathworks.com/help/signal/ref/butter.html", type: "LINK", desc: "Official MATLAB docs" },
+      { course: "MA201", title: "Fourier Series Khan Academy", url: "https://www.khanacademy.org/math/differential-equations", type: "VIDEO", desc: "Step-by-step Fourier basics" },
+      { course: "MA201", title: "Complex Analysis Notes", url: "https://ocw.mit.edu/courses/18-04-complex-variables", type: "PDF", desc: "MIT open course notes" },
+      { course: "MA201", title: "Tutorial Sheet Solutions", url: "https://example.edu/ma201/tutorials", type: "LINK", desc: "Practice problem solutions" },
+      { course: "CS302", title: "SQL Joins Visualizer", url: "https://sqljoin.com/", type: "LINK", desc: "Interactive join practice" },
+      { course: "CS302", title: "Database Normalization Guide", url: "https://www.youtube.com/watch?v=example-dbms", type: "VIDEO", desc: "1NF through BCNF explained" },
+      { course: "CS302", title: "PostgreSQL Documentation", url: "https://www.postgresql.org/docs/", type: "LINK", desc: "Official SQL reference" },
+      { course: "HS101", title: "Technical Writing Guide", url: "https://developers.google.com/tech-writing", type: "LINK", desc: "Google tech writing course" },
+      { course: "HS101", title: "Presentation Skills", url: "https://www.youtube.com/watch?v=example-present", type: "VIDEO", desc: "Academic presentation tips" },
+      { course: "HS101", title: "Communication Lab Rubric", url: "https://example.edu/hs101/rubric.pdf", type: "PDF", desc: "Grading criteria reference" },
+    ];
+    for (const res of sampleResources) {
+      const courseId = courseMap[res.course]?.id;
+      if (!courseId) continue;
+      await client.execute({
+        sql: `INSERT INTO resources (id, title, url, type, course_id, description, source, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, 'ai', ?)`,
+        args: [crypto.randomUUID(), res.title, res.url, res.type, courseId, res.desc, Date.now()],
+      });
+    }
+
+    // ── 10. Sample Weekly Digest ──────────────────────────────────────
+    const digestDate = todayStr;
+    const digestMarkdown = `# Weekly Digest — ${digestDate}
+
+## 1) Attendance Alerts
+- **EC201 Signals & Systems** — attendance below 75% threshold. Attend next 2 classes.
+
+## 2) This Week's Priority Tasks
+### CRITICAL
+- Submit internship application — TechCore Ltd (due ${inOneWeek})
+
+### HIGH
+- CS301 Assignment 2 — AVL Tree Implementation
+- CS302 ER Diagram Assignment
+- Review mid-sem slides for all subjects
+
+### MEDIUM
+- EC201 Lab Report — Filter Design
+- Prepare HS101 Group Presentation
+
+## 3) Grade Gaps
+| Course | Current CIE % | SEE Needed |
+|--------|--------------|------------|
+| CS301  | 84%          | ~32%       |
+| EC201  | 72%          | ~38%       |
+| MA201  | 84%          | ~32%       |
+| CS302  | 92%          | ~28%       |
+
+## 4) Top 3 Focus Recommendations
+1. **CS301 AVL trees** — weakest relative score; do 5 rotation problems daily.
+2. **EC201 attendance** — one more miss puts you at risk.
+3. **Internship deadline** — CRITICAL personal task due this week.
+`;
+    await db.insert(artifactsTable).values({
+      title: `Weekly Digest — ${digestDate}`,
+      type: "REPORT",
+      content: digestMarkdown,
+      tags: JSON.stringify(["weekly-digest"]),
+    });
+
     res.json({
       success: true,
       message: "Demo data loaded successfully!",
@@ -356,9 +478,12 @@ router.post("/demo/seed", async (req, res): Promise<void> => {
         courses: courses.length,
         events: insertedEvents.length,
         attendanceRecords: attToInsert.length,
-        tasks: 8,
+        tasks: 8 + studyPlanTasks.length,
         grades: 5,
         cgpaRecords: 4,
+        studyPlanTasks: studyPlanTasks.length,
+        aiResources: sampleResources.length,
+        weeklyDigest: 1,
       },
     });
   } catch (err: any) {

@@ -14,6 +14,8 @@ import dashboardRouter from "./dashboard";
 import recordRouter from "./record";
 import inboxRouter from "./inbox";
 import demoRouter from "./demo";
+import agentRouter from "./agent";
+import digestRouter from "./digest";
 
 const router: IRouter = Router();
 
@@ -32,5 +34,7 @@ router.use(dashboardRouter);
 router.use(recordRouter);
 router.use(inboxRouter);
 router.use(demoRouter);
+router.use(agentRouter);
+router.use(digestRouter);
 
 export default router;
