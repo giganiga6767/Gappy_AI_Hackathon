@@ -262,15 +262,23 @@ router.post("/ingest", async (req, res): Promise<void> => {
     if (parsed.semester && parsed.semester.name) {
       // Find or create semester
       const semName = parsed.semester.name;
-      const semStart = parsed.semester.startDate || new Date().toISOString().split("T")[0];
-      const semEnd = parsed.semester.endDate || new Date(Date.now() + 150 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const semStart = parsed.semester.startDate;
+      const semEnd = parsed.semester.endDate;
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      const hasValidDates = semStart && semEnd && dateRegex.test(semStart) && dateRegex.test(semEnd);
 
       const [existingSem] = await db.select().from(semestersTable).where(eq(semestersTable.name, semName)).limit(1);
       if (existingSem) {
         activeSemesterId = existingSem.id;
         semesterStartDate = new Date(existingSem.startDate);
         semesterEndDate = new Date(existingSem.endDate);
-      } else {
+        if (hasValidDates) {
+          await db.update(semestersTable).set({
+            startDate: semStart,
+            endDate: semEnd
+          }).where(eq(semestersTable.id, activeSemesterId));
+        }
+      } else if (hasValidDates) {
         // Set all others inactive
         await db.update(semestersTable).set({ isActive: false });
         const [newSem] = await db.insert(semestersTable).values({

@@ -423,19 +423,26 @@ router.post("/inbox/:id/apply", async (req, res): Promise<void> => {
     let activeSemesterId = "";
     if (finalPayload.semester && finalPayload.semester.name) {
       const sem = finalPayload.semester;
+      const semStart = sem.startDate;
+      const semEnd = sem.endDate;
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      const hasValidDates = semStart && semEnd && dateRegex.test(semStart) && dateRegex.test(semEnd);
+
       const [existingSem] = await db.select().from(semestersTable).where(eq(semestersTable.name, sem.name)).limit(1);
       if (existingSem) {
         activeSemesterId = existingSem.id;
-        await db.update(semestersTable).set({
-          startDate: sem.startDate,
-          endDate: sem.endDate
-        }).where(eq(semestersTable.id, activeSemesterId));
-      } else {
+        if (hasValidDates) {
+          await db.update(semestersTable).set({
+            startDate: semStart,
+            endDate: semEnd
+          }).where(eq(semestersTable.id, activeSemesterId));
+        }
+      } else if (hasValidDates) {
         await db.update(semestersTable).set({ isActive: false });
         const [newSem] = await db.insert(semestersTable).values({
           name: sem.name,
-          startDate: sem.startDate,
-          endDate: sem.endDate,
+          startDate: semStart,
+          endDate: semEnd,
           isActive: true
         }).returning();
         activeSemesterId = newSem.id;
