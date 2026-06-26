@@ -5,10 +5,39 @@ import { BrutalButton } from "@/components/shared/BrutalButton";
 import { BrutalBadge } from "@/components/shared/BrutalBadge";
 import { 
   Mic, Square, Play, Pause, Upload, BookOpen, 
-  FileText, CheckSquare, Volume2, Download, 
-  Loader2, Sparkles, Clock, Trash2, Eye 
+  FileText, Volume2, Download, Monitor,
+  Loader2, Sparkles, Clock, Eye, Globe
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+type RecordingSource = "mic" | "screen" | "tab" | "both";
+
+const SOURCES: { id: RecordingSource; label: string; hint: string; icon: React.ReactNode }[] = [
+  {
+    id: "mic",
+    label: "Microphone",
+    hint: "Physical classroom — records your mic only",
+    icon: <Mic className="h-5 w-5" />,
+  },
+  {
+    id: "screen",
+    label: "Zoom / Meet",
+    hint: "Share your meeting window — captures system audio",
+    icon: <Monitor className="h-5 w-5" />,
+  },
+  {
+    id: "tab",
+    label: "Browser Tab",
+    hint: "YouTube / lecture video — share a browser tab",
+    icon: <Globe className="h-5 w-5" />,
+  },
+  {
+    id: "both",
+    label: "Both",
+    hint: "Hybrid class — mixes mic + meeting audio",
+    icon: <Volume2 className="h-5 w-5" />,
+  },
+];
 
 interface PipelineResult {
   success: boolean;
@@ -43,11 +72,13 @@ export default function ClassNotesPage() {
   });
 
   // Recording states
+  const [recordSource, setRecordSource] = useState<RecordingSource>("mic");
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [sourceError, setSourceError] = useState<string | null>(null);
 
   // File Upload state
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -66,6 +97,8 @@ export default function ClassNotesPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const extraTracksRef = useRef<MediaStreamTrack[]>([]);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   // Fetch previously saved class notes
   const fetchSavedNotes = async () => {
@@ -105,47 +138,118 @@ export default function ClassNotesPage() {
     };
   }, [isRecording, isPaused]);
 
-  // Start Mic Recording
+  // Build a MediaStream based on the selected source
+  const buildStream = async (source: RecordingSource): Promise<MediaStream> => {
+    if (source === "mic") {
+      return navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+
+    if (source === "screen" || source === "tab") {
+      // getDisplayMedia shows browser native picker: screen / window / tab
+      // User picks the meeting window (screen) or a browser tab (tab)
+      const displayStream = await (navigator.mediaDevices as any).getDisplayMedia({
+        video: true,
+        audio: {
+          suppressLocalAudioPlayback: false,
+          echoCancellation: false,
+          noiseSuppression: false,
+          sampleRate: 44100,
+        },
+        ...(source === "tab" ? { preferCurrentTab: false } : {}),
+      });
+
+      // Keep video tracks so the browser doesn't kill the stream, but don't record them
+      extraTracksRef.current = displayStream.getVideoTracks();
+      // Return only the audio portion for recording
+      const audioTracks = displayStream.getAudioTracks();
+      if (audioTracks.length === 0) {
+        displayStream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
+        throw new Error(
+          source === "tab"
+            ? 'No tab audio found. When sharing a browser tab, make sure to tick "Share tab audio" in the dialog.'
+            : 'No system audio found. In the screen-share dialog, enable the "Share system audio" or "Share audio" checkbox.'
+        );
+      }
+      return new MediaStream(audioTracks);
+    }
+
+    // "both" — mix microphone + display audio via Web Audio API
+    const [micStream, displayStream] = await Promise.all([
+      navigator.mediaDevices.getUserMedia({ audio: true }),
+      (navigator.mediaDevices as any).getDisplayMedia({
+        video: true,
+        audio: { suppressLocalAudioPlayback: false, echoCancellation: false, noiseSuppression: false },
+      }),
+    ]);
+
+    const displayAudio = displayStream.getAudioTracks();
+    extraTracksRef.current = [
+      ...displayStream.getVideoTracks(),
+      ...(displayAudio.length === 0 ? [] : []),
+    ];
+
+    const ctx = new AudioContext();
+    audioContextRef.current = ctx;
+    const dest = ctx.createMediaStreamDestination();
+    ctx.createMediaStreamSource(micStream).connect(dest);
+    if (displayAudio.length > 0) {
+      ctx.createMediaStreamSource(new MediaStream(displayAudio)).connect(dest);
+    }
+    // Keep originals for cleanup
+    micStream.getTracks().forEach((t) => extraTracksRef.current.push(t));
+    displayStream.getTracks().forEach((t) => extraTracksRef.current.push(t));
+
+    return dest.stream;
+  };
+
+  // Start Recording
   const startRecording = async () => {
     setAudioBlob(null);
     setAudioUrl(null);
     setUploadedFile(null);
+    setSourceError(null);
     audioChunksRef.current = [];
+    extraTracksRef.current = [];
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      const stream = await buildStream(recordSource);
+
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
 
       mediaRecorder.onstop = () => {
         const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         setAudioBlob(blob);
         setAudioUrl(URL.createObjectURL(blob));
-        // Stop all audio tracks to release microphone
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((t) => t.stop());
+        extraTracksRef.current.forEach((t) => t.stop());
+        audioContextRef.current?.close();
+        extraTracksRef.current = [];
+        audioContextRef.current = null;
       };
 
-      mediaRecorder.start(1000); // chunk every second
+      mediaRecorder.start(1000);
       setIsRecording(true);
       setIsPaused(false);
       setRecordingSeconds(0);
-      toast({
-        title: "Microphone Active",
-        description: "Recording class session audio..."
-      });
+
+      const sourceLabel = SOURCES.find((s) => s.id === recordSource)?.label ?? recordSource;
+      toast({ title: `${sourceLabel} — Recording Active`, description: "Audio capture started." });
     } catch (err: any) {
-      console.error("Failed to access microphone:", err);
-      toast({
-        title: "Microphone Error",
-        description: "Could not access microphone. Please check system permissions.",
-        variant: "destructive"
-      });
+      console.error("Recording error:", err);
+      const msg =
+        err?.message?.includes("Permission denied") || err?.name === "NotAllowedError"
+          ? "Permission denied. Allow access in your browser settings."
+          : err?.message || "Could not start recording.";
+      setSourceError(msg);
+      toast({ title: "Recording Error", description: msg, variant: "destructive" });
     }
   };
 
@@ -416,12 +520,57 @@ export default function ClassNotesPage() {
               <Volume2 className="h-5 w-5 text-sage" /> AUDIO CAPTURE
             </h3>
 
+            {/* Source Picker */}
+            <div className="mb-6">
+              <div className="font-mono text-[10px] font-bold text-inkLight mb-2 uppercase tracking-wider">Select Audio Source</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {SOURCES.map((src) => {
+                  const active = recordSource === src.id;
+                  return (
+                    <button
+                      key={src.id}
+                      type="button"
+                      disabled={isRecording}
+                      onClick={() => { setRecordSource(src.id); setSourceError(null); }}
+                      className={[
+                        "border-2 p-3 flex flex-col items-center gap-2 font-mono text-xs font-bold uppercase transition-none",
+                        active
+                          ? "border-ink bg-ink text-paper shadow-[3px_3px_0_#888]"
+                          : "border-ink bg-paper text-ink hover:bg-surface",
+                        isRecording ? "opacity-40 cursor-not-allowed" : "cursor-pointer",
+                      ].join(" ")}
+                    >
+                      <span className={active ? "text-paper" : "text-inkLight"}>{src.icon}</span>
+                      <span>{src.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="font-mono text-[10px] text-inkLight mt-2">
+                ↳ {SOURCES.find((s) => s.id === recordSource)?.hint}
+                {(recordSource === "screen" || recordSource === "tab" || recordSource === "both") && (
+                  <span className="ml-1 text-amber font-bold">
+                    — your browser will ask what to share
+                    {recordSource === "tab" ? "; pick a tab and enable 'Share tab audio'" : "; enable 'Share system audio'"}
+                  </span>
+                )}
+              </p>
+            </div>
+
+            {/* Error message */}
+            {sourceError && (
+              <div className="mb-4 border-2 border-terracotta bg-terracottaLight/10 p-3 font-mono text-xs text-terracotta font-bold">
+                ⚠ {sourceError}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               {/* Browser Recorder panel */}
               <div className="border-2 border-ink p-4 bg-paper flex flex-col items-center justify-center text-center space-y-4">
-                <div className="font-mono text-xs font-bold uppercase tracking-wider text-inkLight">
-                  Live Mic Recording
+                <div className="font-mono text-xs font-bold uppercase tracking-wider text-inkLight flex items-center gap-2">
+                  {SOURCES.find((s) => s.id === recordSource)?.icon}
+                  Live Recording — {SOURCES.find((s) => s.id === recordSource)?.label}
                 </div>
 
                 <div className="font-mono text-4xl font-extrabold tracking-widest text-ink">
@@ -438,7 +587,7 @@ export default function ClassNotesPage() {
                 <div className="flex gap-2">
                   {!isRecording ? (
                     <BrutalButton variant="primary" onClick={startRecording} className="flex items-center gap-2">
-                      <Mic className="h-4 w-4" /> START RECORD
+                      {SOURCES.find((s) => s.id === recordSource)?.icon} START RECORD
                     </BrutalButton>
                   ) : (
                     <>
