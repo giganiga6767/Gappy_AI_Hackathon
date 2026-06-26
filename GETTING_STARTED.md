@@ -6,7 +6,7 @@ This guide covers system setup, installation, running the services, CLI usage, a
 
 ## 1. Setup & Installation
 
-For a detailed platform-specific installation guide covering **Linux** and **Windows (WSL & Native)**, please refer to [INSTALL.md](./INSTALL.md).
+For a detailed platform-specific installation guide, please refer to **[INSTALL_LINUX.md](./INSTALL_LINUX.md)** or **[INSTALL_WINDOWS.md](./INSTALL_WINDOWS.md)**.
 
 ### Quick Start (Linux/WSL)
 

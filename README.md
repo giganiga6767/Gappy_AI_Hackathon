@@ -10,7 +10,8 @@ NexusDesk is a **local-first, offline-capable academic workspace** built for stu
 * 🌟 **[Feature Guide](./FEATURES.md)**: Detailed breakdown of the core features, AI Ingestion Engine, conflict checker, and audio pipeline.
 * 🚀 **[Getting Started Guide](./GETTING_STARTED.md)**: Setup, Installation, Launching the Servers, CLI usage, and Team workflows.
 * 🛠️ **[Developer & Reference Guide](./DEVELOPER.md)**: Database schemas, API endpoints reference, Python scripts, Lemma Agents, and feature implementation status.
-* 💻 **[Installation Guide](./INSTALL.md)**: Platform-specific installation guides for Linux, WSL, and Windows native.
+* 🐧 **[Linux Install Guide](./INSTALL_LINUX.md)**: Spoon-fed setup guide for Ubuntu/Debian/Mint.
+* 🪟 **[Windows Install Guide](./INSTALL_WINDOWS.md)**: Spoon-fed setup guide for Windows Native & WSL.
 
 ---
 
