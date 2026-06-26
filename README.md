@@ -110,20 +110,20 @@ NexusDesk features a **Supercharged AI Ingestion Engine** that can process a raw
 6. **Semester Roadmap Digest**: Compiles a comprehensive workload timeline, survival rules, and focus areas into a Markdown Report that populates your Weekly Digest dashboard immediately.
 
 ```
-Capture  ──►  Understand (LLM)  ──►  Preview & Edit JSON  ──►  Apply to DB
-(status: captured)               (status: understood)          (status: applied)
+Capture  ──►  Understand (Async LLM) ──► Preview, Conflicts & Edit ──► Apply to DB & Trigger Agents
+(captured)     (status: understanding)   (status: understood)           (status: applied)
 ```
 
 1. **Capture** — paste raw text, drag-and-drop a PDF/image/audio file, or record live audio. All items land in the `inbox` table with `status: captured`.
-2. **Understand** — the API server runs the file through transcription (Whisper or Gemini) and passes the result to an LLM that extracts structured entities: courses, sessions, tasks, artifacts.
-3. **Preview** — the web UI shows the extracted JSON in an editable form so you can fix any mistakes before committing.
-4. **Apply** — on approval, data is written to the correct tables and the inbox item is archived as `applied`.
+2. **Understand** — runs asynchronously in the background (`202 Accepted` response with status set to `understanding` and live client polling) to transcribe and parse data without request timeouts.
+3. **Preview & Conflicts** — displays extracted data and automatically checks for conflicts: course code collisions, schedule overlaps (recurring events time overlaps), and duplicate task titles.
+4. **Apply & Trigger** — applies the data to the database and emits event webhooks (`syllabus:applied`) to run background Lemma workflows (e.g. rebuilds Weekly Digests immediately).
 
 ### Live Audio Recording & AI Notes
 - Record **microphone audio** during a class directly from the CLI (`nexus capture --record`).
 - Record **system audio loopback** to capture Zoom/Google Meet/YouTube (`nexus capture --record --system`).
 - Audio is compressed from WAV to MP3 with ffmpeg automatically.
-- Processing pipeline: `MP3 → Whisper/Gemini Transcription → Gemini Note Taker → Markdown + .docx notes`.
+- **Non-blocking background pipeline**: Runs Whisper or Gemini transcription,Note-Taker structuring, and task insertion asynchronously in the background. The client polls the status with a multi-stage loader (`transcribing` ➔ `generating` ➔ `saving` ➔ `complete`).
 - Notes are saved to `recordings/notes/` and linked as resources to the relevant course.
 
 ### Attendance Tracker
@@ -656,12 +656,12 @@ This regenerates `lib/api-client-react/src/generated/` and `lib/api-zod/src/gene
 | **Database Foundation** | ✅ Complete | Drizzle ORM + libsql/SQLite, portable `NEXUSDESK_DB_URL`, schema indexes on courseId, status, date |
 | **Semester Management** | ✅ Complete | Full CRUD — `GET/POST/PATCH/DELETE /api/semesters` |
 | **Course Management** | ✅ Complete | Full CRUD, real-time attendance stats (`effectivePct`, `canSkip`, `mustAttend`) |
-| **Event / Schedule** | ✅ Complete | Recurring event generation, cancel endpoint, enriched with courseShortName + attendance |
+| **Event / Schedule** | ✅ Complete | Recurring series generation, instance cancellations, and series-aware recurring exceptions (series delete/update/cancel) |
 | **Attendance Tracking** | ✅ Complete | Mark present/absent per event, per-course aggregates, at-risk detection |
 | **Task Kanban** | ✅ Complete | TODO / IN_PROGRESS / DONE lanes, priority levels, category filter, inline create |
 | **CGPA Simulator** | ✅ Complete | Historical semester records, SGPA-weighted CGPA projection tool |
-| **Inbox Pipeline** | ✅ Complete | Capture → Understand (Gemini/Ollama) → Structured Preview & Edit → Apply |
-| **Inbox UX** | ✅ Complete | Structured form preview (not raw JSON), editable courses/sessions/actions |
+| **Inbox Ingestion** | ✅ Complete | Non-blocking background ingestion, real-time polling, and smart conflict checks (courses, tasks, schedule overlaps) |
+| **Inbox UX** | ✅ Complete | Structured form preview (not raw JSON), editable courses/sessions/actions, and potential conflict alerts |
 | **Export** | ✅ Complete | ZIP export of all data, ICS calendar |
 | **Dashboard / Today** | ✅ Complete | Current session, upcoming events, attendance health, pending actions |
 | **Planner / Calendar** | ✅ Complete | Weekly/monthly view, exam timeline, session cancellations |
@@ -669,11 +669,12 @@ This regenerates `lib/api-client-react/src/generated/` and `lib/api-zod/src/gene
 | **Demo Mode** | ✅ Complete | `POST /api/demo/seed` seeds 5 courses, 290+ events, 250+ attendance records, 8 tasks, CGPA history |
 | **Hardcoded Path Fix** | ✅ Complete | All hardcoded user home paths replaced with `process.env.NEXUSDESK_ROOT` fallback |
 | **DB Indexes** | ✅ Complete | Indexes on `courseId`, `startTime`, `status`, `category`, `dueDate`, `recurringGroupId` |
-| **Class Notes (Audio)** | ✅ Complete | Live Web UI recording with mic, screen, tab, or mixed audio sources, auto-transcribe + summarize |
+| **Class Notes (Audio)** | ✅ Complete | Live Web UI recording with mic/screen/tab/mix, non-blocking background audio pipeline, and multi-stage progress tracking |
 | **Resources Page** | ✅ Complete | Browsable per-course materials, custom document upload, and AI resource recommendations |
 | **Projects Page** | ✅ Complete | Progress entry logs, project details, linked tasks, and milestone timelines |
 | **ICS Calendar Sync** | ✅ Complete | Zero Lock-in ZIP export containing Google Calendar compatible `calendar.ics` |
 | **Python Whisper Integration**| ✅ Complete | Local faster-whisper audio transcription support without API key |
+| **Lemma Agentic Hooks**| ✅ Complete | Event-driven event webhook dispatcher that decouples API mutations and triggers Lemma workflows asynchronously |
 
 ### 📋 Planned
 
