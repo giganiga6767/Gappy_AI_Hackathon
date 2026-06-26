@@ -54,6 +54,7 @@ interface ExtractedPayload {
   sessions: ExtractedSession[];
   artifacts: any[];
   actions: ExtractedAction[];
+  weeklyDigest?: string;
 }
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -583,6 +584,7 @@ export default function InboxPage() {
           sessions: data.analysis?.sessions || [],
           artifacts: data.analysis?.artifacts || [],
           actions: data.analysis?.actions || [],
+          weeklyDigest: data.analysis?.weeklyDigest,
         };
         setPreviewPayload(parsed);
         setPreviewId(item.id);
@@ -608,6 +610,7 @@ export default function InboxPage() {
         sessions: parsed.sessions || [],
         artifacts: parsed.artifacts || [],
         actions: parsed.actions || [],
+        weeklyDigest: parsed.weeklyDigest,
       });
       setPreviewId(item.id);
       setApplyError(null);

@@ -15,6 +15,7 @@ export const tasksTable = sqliteTable("tasks", {
   linkedProjectId: text("linked_project_id"),
   studyPlan: text("study_plan"),
   studyMaterials: text("study_materials"),
+  triageNote: text("triageNote"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
 }, (table) => [

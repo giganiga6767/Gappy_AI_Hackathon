@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { inboxTable, semestersTable, coursesTable, eventsTable, resourcesTable, tasksTable, attendanceTable } from "@workspace/db";
+import { inboxTable, semestersTable, coursesTable, eventsTable, resourcesTable, tasksTable, attendanceTable, artifactsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
@@ -310,8 +310,26 @@ router.post("/inbox/:id/understand", async (req, res): Promise<void> => {
 
     // Step B: Ask LLM to extract entity relations in our simplified product model
     const currentDate = new Date().toISOString().split("T")[0];
-    const prompt = `You are a quiet, precise AI parsing agent. Analyze this academic document or text and structure it strictly into the target schema.
+    const prompt = `You are a highly advanced academic strategist, scheduler, and curriculum parser.
+Analyze this academic document (syllabus, calendar, timetable, assignment guidelines, or notes) and generate a comprehensive, pre-scheduled, and highly-optimized semester roadmap.
 Current Date: ${currentDate}
+
+In addition to extracting the raw events and courses mentioned in the text, you must use your academic intelligence to proactively generate:
+1. PREP TASKS & MILESTONES: For every major exam (midterm, final) or project/assignment mentioned:
+   - Generate 2-3 preparation tasks (e.g. "Review formulas for [Course] Exam", "Draft essay outline for [Assignment]") scheduled at appropriate dates leading up to the deadline (e.g., 7 days, 3 days, 1 day prior).
+   - Generate 3-4 milestone check-ins for complex projects (e.g., "Brainstorm proposal", "Implement core logic", "Write report").
+2. STUDY PLANS: For every action/task (both extracted and generated), produce a detailed markdown "studyPlan" outlining a day-by-day or step-by-step strategy to complete it successfully.
+3. RECOMMENDATIONS & RESOURCES: For every action/task, recommend 2-3 specific, high-quality learning resources (videos, books, links) as a JSON array "studyMaterials" including:
+   - title: Name of the resource
+   - type: "VIDEO" | "LINK" | "NOTE"
+   - url: A valid educational URL (e.g. YouTube search link for the topic, MIT OCW link, Google Scholar)
+   - reason: Why this resource is relevant to this specific task
+4. TRIAGE NOTE: For every action/task, write a "triageNote" explaining the task's difficulty, importance to their GPA (based on syllabus weights), and priority rationale.
+5. SEMESTER ROADMAP REPORT: Compile a complete semester overview and workload strategy into a detailed markdown document ("weeklyDigest"). Include sections:
+   - 📅 Key Deadlines & Chronological Exam Timeline
+   - ⚡ CIE Grade Survival Advice (based on course credits/weights)
+   - 🛠️ Strategic Study Rules (focus areas for weak subjects)
+   - 🚦 Potential schedule clashes or heavy workload weeks
 
 Target Schema JSON format:
 {
@@ -358,9 +376,20 @@ Target Schema JSON format:
       "category": "ACADEMICS", // ACADEMICS, HARDWARE_DEV, PERSONAL
       "priority": "MEDIUM", // LOW, MEDIUM, HIGH, CRITICAL
       "dueDate": "YYYY-MM-DD",
-      "subjectCode": "CS101"
+      "subjectCode": "CS101",
+      "triageNote": "AI explanation of importance, difficulty, and approach strategy",
+      "studyPlan": "Markdown step-by-step preparation plan",
+      "studyMaterials": [
+        {
+          "title": "Resource title",
+          "type": "VIDEO", // VIDEO, LINK, NOTE
+          "url": "https://...",
+          "reason": "Why this is recommended"
+        }
+      ]
     }
-  ]
+  ],
+  "weeklyDigest": "Full detailed markdown semester roadmap report content"
 }
 
 Only return a valid JSON object matching this schema. If any section is empty, return empty array. Do not write text before or after the JSON.
@@ -614,7 +643,10 @@ router.post("/inbox/:id/apply", async (req, res): Promise<void> => {
           category: act.category || "ACADEMICS",
           priority: act.priority || "MEDIUM",
           dueDate: act.dueDate || null,
-          linkedCourseId: courseId
+          linkedCourseId: courseId,
+          studyPlan: act.studyPlan || null,
+          studyMaterials: act.studyMaterials ? (typeof act.studyMaterials === "string" ? act.studyMaterials : JSON.stringify(act.studyMaterials)) : null,
+          triageNote: act.triageNote || null
         }).returning();
 
         // Sync to Lemma Datastore
@@ -641,6 +673,15 @@ router.post("/inbox/:id/apply", async (req, res): Promise<void> => {
       }
     }
 
+    // F. Apply Weekly Digest Report
+    if (finalPayload.weeklyDigest) {
+      await db.insert(artifactsTable).values({
+        title: `AI Syllabus Digest — ${new Date().toISOString().split("T")[0]}`,
+        type: "REPORT",
+        content: finalPayload.weeklyDigest,
+        tags: JSON.stringify(["weekly-digest"]),
+      });
+    }
 
     await db.update(inboxTable).set({
       status: "applied",

@@ -254,6 +254,9 @@ export interface Task {
   linkedCourseId?: string | null;
   /** @nullable */
   linkedProjectId?: string | null;
+  studyPlan?: string | null;
+  studyMaterials?: string | null;
+  triageNote?: string | null;
   createdAt: string;
   updatedAt: string;
 }
