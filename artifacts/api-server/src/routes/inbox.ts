@@ -4,7 +4,7 @@ import { inboxTable, semestersTable, coursesTable, eventsTable, resourcesTable, 
 import { eq, and } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
-import { exec } from "child_process";
+import { exec, execSync } from "child_process";
 import { LemmaClient } from "lemma-sdk";
 import { resolveGeminiApiKey } from "../lib/utils";
 
