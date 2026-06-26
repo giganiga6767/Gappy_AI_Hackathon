@@ -1,3 +1,13 @@
 #!/bin/bash
-export PATH="/home/niranjan/.nvm/versions/node/v20.20.2/bin:$PATH"
-/home/niranjan/Desktop/Gappy_AI_Hackathon/node_modules/.pnpm/node_modules/.bin/tsx /home/niranjan/Desktop/Gappy_AI_Hackathon/bin/nexus.mjs "$@"
+
+# Resolve project root from the location of this script
+NEXUS_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." >/dev/null 2>&1 && pwd )"
+
+# Load nvm if available (portable — works on any machine)
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
+  export NVM_DIR="$HOME/.nvm"
+  # shellcheck disable=SC1091
+  . "$NVM_DIR/nvm.sh"
+fi
+
+exec npx --yes tsx "$NEXUS_ROOT/bin/nexus.mjs" "$@"
