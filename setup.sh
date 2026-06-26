@@ -9,6 +9,13 @@ echo "================================================="
 WORKSPACE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ENV_FILE="$WORKSPACE_DIR/.env"
 
+# Load nvm if available (portable — works on any machine)
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
+  export NVM_DIR="$HOME/.nvm"
+  # shellcheck disable=SC1091
+  . "$NVM_DIR/nvm.sh"
+fi
+
 # 1. System prerequisites check
 echo "🔍 Checking system environment..."
 if ! command -v node &>/dev/null; then
@@ -38,7 +45,7 @@ if [ -f "$ENV_FILE" ]; then
 else
   echo "No .env configuration found. Let's set it up."
   read -p "Enter your Google Gemini API Key (Press Enter to run offline/local LLM): " USER_KEY
-  
+
   echo "DATABASE_URL=\"file:$WORKSPACE_DIR/sqlite.db\"" > "$ENV_FILE"
   echo "PORT=8080" >> "$ENV_FILE"
   echo "PORT_FRONTEND=19211" >> "$ENV_FILE"
@@ -57,7 +64,6 @@ export $(grep -v '^#' "$ENV_FILE" | xargs 2>/dev/null)
 
 # 3. Install Monorepo Node dependencies
 echo -e "\n📦 Installing Node workspace dependencies (pnpm)..."
-export PATH="/home/niranjan/.nvm/versions/node/v20.20.2/bin:$PATH" # Ensure v20 is used
 npx pnpm@9 install
 if [ $? -ne 0 ]; then
   echo "❌ Error: Node package installation failed."
@@ -66,14 +72,17 @@ fi
 
 # 4. Install Python dependencies
 echo -e "\n🐍 Installing Python dependencies..."
-python3 -m pip install -r requirements.txt --break-system-packages
-if [ $? -ne 0 ]; then
-  echo "⚠️  Warning: Python package installation returned an error. Local models might fail."
+if [ -f "$WORKSPACE_DIR/requirements.txt" ]; then
+  python3 -m pip install -r requirements.txt --break-system-packages
+  if [ $? -ne 0 ]; then
+    echo "⚠️  Warning: Python package installation returned an error. Local models might fail."
+  fi
+else
+  echo "ℹ️  No requirements.txt found — skipping Python dependencies."
 fi
 
-# 5. Push Database Schemas
+# 5. Push Database Schemas (no full typecheck — just push the schema)
 echo -e "\n🗄️ Provisioning local SQLite database schema..."
-npx pnpm@9 build
 npx pnpm@9 --filter @workspace/db push
 if [ $? -ne 0 ]; then
   echo "❌ Error: Database schema push failed."

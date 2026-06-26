@@ -4,14 +4,18 @@
 CDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd "$CDIR"
 
-# Add Node.js 20 to the path so Vite and pnpm run with a compatible version
-export PATH="/home/niranjan/.nvm/versions/node/v20.20.2/bin:$PATH"
+# Load nvm if available (portable — works on any machine)
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
+  export NVM_DIR="$HOME/.nvm"
+  # shellcheck disable=SC1091
+  . "$NVM_DIR/nvm.sh"
+fi
 
 # Load environment variables
 if [ -f .env ]; then
   export $(grep -v '^#' .env | xargs)
 else
-  echo ".env file not found! Please create it."
+  echo ".env file not found! Please run setup.sh first."
   exit 1
 fi
 

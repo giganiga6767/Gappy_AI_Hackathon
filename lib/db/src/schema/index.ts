@@ -8,4 +8,4 @@ export * from "./projects";
 export * from "./cgpa";
 export * from "./resources";
 export * from "./inbox";
-
+export * from "./artifacts";
