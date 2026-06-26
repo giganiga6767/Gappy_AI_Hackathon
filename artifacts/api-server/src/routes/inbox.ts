@@ -6,6 +6,7 @@ import fs from "fs";
 import path from "path";
 import { exec } from "child_process";
 import { LemmaClient } from "lemma-sdk";
+import { resolveGeminiApiKey } from "../lib/utils";
 
 const router = Router();
 // Resolve workspace root: env override > relative from server package > cwd
@@ -174,7 +175,7 @@ router.post("/inbox/:id/understand", async (req, res): Promise<void> => {
       return;
     }
 
-    const geminiApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.ANTIGRAVITY_API_KEY;
+    const geminiApiKey = resolveGeminiApiKey(apiKey);
     const llmProvider = (provider === "gemini" || provider === "antigravity" || geminiApiKey) ? "gemini" : "ollama";
 
     if (llmProvider === "gemini" && !geminiApiKey) {

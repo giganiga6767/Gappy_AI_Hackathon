@@ -194,71 +194,40 @@ All data lives in `sqlite.db` at the project root. Managed by **Drizzle ORM**.
 
 ## 5. Setup & Installation
 
-### System Prerequisites
+For a detailed step-by-step installation guide covering **Linux** and **Windows (WSL & Native)**, please refer to [INSTALL.md](./INSTALL.md).
 
-Install system-level tools (Linux/Ubuntu):
-```bash
-sudo apt update && sudo apt install ffmpeg alsa-utils pulseaudio-utils zip -y
-```
-
-- **ffmpeg** — audio compression (WAV → MP3)
-- **alsa-utils / pulseaudio-utils** — audio recording via CLI
-- **zip** — export packaging
-
-### Node.js
-Requires **Node.js v20+** and **pnpm v9**.
-
-Check your version:
-```bash
-node -v   # Should be v20.x or higher
-```
-
-### Run Setup
-```bash
-bash setup.sh
-```
-
-This script does the following in order:
-1. Checks Node.js, Python3, and ffmpeg are installed.
-2. Creates `.env` if it doesn't exist, prompting for an optional Gemini API key.
-3. Sets `DATABASE_URL="file:<workspace>/sqlite.db"` in `.env`.
-4. Runs `pnpm install` to install all workspace packages.
-5. Installs Python dependencies from `requirements.txt` (if present).
-6. Runs `pnpm --filter @workspace/db push` to create/migrate the SQLite schema.
-
-> **Re-running is safe.** If `.env` already exists, setup skips key configuration and goes straight to install.
-
-### Configure `.env` manually (optional)
-
-```env
-DATABASE_URL="file:./sqlite.db"
-PORT=8080
-PORT_FRONTEND=19211
-GEMINI_API_KEY="your_google_ai_studio_key_here"
-GOOGLE_API_KEY="your_google_ai_studio_key_here"
-```
-
-If no API key is provided, the system falls back to:
-- **Transcription**: CPU-quantized `faster-whisper` model (runs locally, no GPU required)
-- **LLM reasoning**: Local `Ollama` with `llama3` or `llama3.2-vision`
+### Quick Start (Linux/WSL)
+1. **System Dependencies**:
+   ```bash
+   sudo apt update && sudo apt install ffmpeg alsa-utils pulseaudio-utils zip -y
+   ```
+2. **Setup**:
+   ```bash
+   bash setup.sh
+   ```
+   *(Creates `.env`, installs all Node and Python dependencies, and provisions the database schema)*
 
 ---
 
 ## 6. Running the App
 
+Start the three background services concurrently by running:
 ```bash
 bash launch.sh
 ```
 
-This starts all three servers concurrently:
+This launch script starts the following services:
 
-| Service | URL |
-|---|---|
-| Frontend UI | http://localhost:19211 |
-| Express API | http://localhost:8080 |
-| Lemma Backend | http://localhost:4000 |
+| Service | Port | Description | URL |
+|---|---|---|---|
+| **Vite Frontend** | `19211` | React Neo-Brutalist UI | [http://localhost:19211](http://localhost:19211) |
+| **Express API** | `8080` | Express core REST server | [http://localhost:8080](http://localhost:8080) |
+| **Lemma Backend** | `4000` | Lemma agentic background worker | [http://localhost:4000](http://localhost:4000) |
 
-Press `Ctrl+C` to stop all servers cleanly.
+> [!NOTE]
+> **Port Conflict Fix**: The Lemma Agentic Backend previously experienced port conflicts by inheriting the root `PORT=8080` environment variable from the `.env` configuration. The startup workflow has been updated to explicitly run the backend on port `4000` to prevent collisions.
+
+To shut down all running servers cleanly, press `Ctrl+C` in your terminal.
 
 ### Updating the database schema
 
@@ -457,36 +426,38 @@ python3 scripts/gemini_report_maker.py --data grades.csv --images chart1.png --t
 
 ---
 
-## 10. Agentic Backend — Lemma
+## 10. Agentic Backend — Lemma & Hackathon Architecture
 
-The Lemma backend runs on port `4000` and manages long-running intelligent workflows. It uses the **Lemma SDK** for agent orchestration.
+The Lemma backend runs on port `4000` and manages long-running agentic workflows. It leverages the **Lemma SDK** (`lemma-sdk`) as the core agent and data orchestrator, aligning directly with the **Gappy AI Hackathon** problem statements:
+- **AI Meeting to Execution Operator**: Turning messy lecture recordings/meeting transcripts (captured via Web UI or CLI) into structured tasks, deadlines, and priorities on a Neo-Brutalist Kanban execution board.
+- **AI Second Brain**: Linking files, schedules, and notes with proactive agent suggestions to guide study paths and debug project blockages.
 
-### Triage Agent (`triageAgent.ts`)
-Routes incoming transcripts from the `./transcripts/` folder:
-- Classifies content as **Academic** or **Professional/Enterprise**.
-- Stores academic items in `studentDatastore`.
-- Stores enterprise items in `enterpriseDatastore`.
+---
 
-### Academic Proactive Copilot (`academicCopilot.ts`)
-Triggered by the cron job for each upcoming task:
-- Analyzes the task type and deadline urgency.
-- Generates a **tailored study strategy** (spaced repetition for exams, outline-first for assignments, agile milestones for projects).
-- Finds **curated learning resources**: YouTube explainer videos, open-access papers, practice platforms (Khan Academy, Anki, LeetCode, etc.).
-- Writes the study plan and resources back to the task in the database.
+### How Lemma is Integrated
 
-### Enterprise Solution Architect (`enterpriseSolutionArch.ts`)
-Triggered when a task is marked `BLOCKED`:
-- Analyzes the blocker context.
-- Generates actionable unblocking suggestions.
-- Stores resolution back in the enterprise datastore.
+#### 1. Data Layer: Lemma Records API
+Our student and professional datastores ([studentDatastore.ts](./backend/src/datastores/studentDatastore.ts) and [enterpriseDatastore.ts](./backend/src/datastores/enterpriseDatastore.ts)) use the **Lemma Records API** (`lemmaClient.records`) to store, update, and manage structured tasks, milestones, and learning assets.
 
-### Background Workflows
+#### 2. Agent Layer: Lemma Agents & Conversations API
+We run three custom autonomous agents using `lemmaClient.agents.run`:
 
-| Workflow | Trigger | Action |
-|---|---|---|
-| **Ingestion Watcher** | New file in `./transcripts/` | Runs `triageAgent`, routes to correct datastore |
-| **Academic Cron Job** | Daily at 08:00 AM | Scans tasks due within 7 days, runs `academicCopilot` for each |
-| **Enterprise Unblocker** | Task status → `BLOCKED` | Runs `enterpriseSolutionArch` to suggest fixes |
+* **Triage Agent** (`triageAgent.ts`):
+  Routes incoming audio transcripts from the `./transcripts/` folder. It classifies content as **Academic** or **Professional**, extracts action items, owners, and deadlines, and routes them to the correct Record store.
+* **Academic Proactive Copilot** (`academicCopilot.ts`):
+  Triggered by a cron job for upcoming student tasks. It evaluates deadline urgency and generates customized study strategies (e.g. spaced repetition for exams) along with curated external resources (e.g. YouTube explainers, practice problems).
+* **Enterprise Solution Architect** (`enterpriseSolutionArch.ts`):
+  Triggered when a task status becomes `BLOCKED`. It inspects the blocker context and writes actionable troubleshooting recommendations back to the datastore.
+
+---
+
+### Background Workflows Summary
+
+| Workflow | Trigger | Agent Involved | Action |
+|---|---|---|---|
+| **Ingestion Watcher** | New file dropped in `./transcripts/` | `TriageAgent` | Formats and routes task to student/enterprise record store |
+| **Academic Cron Job** | Daily at 08:00 AM | `AcademicCopilot` | Generates personalized study guides & links curated resources |
+| **Enterprise Unblocker**| Task status changes to `BLOCKED` | `EnterpriseSolutionArch` | Injects actionable debugging & resolution tips to the task |
 
 ---
 
@@ -503,7 +474,20 @@ Create a `.env` file in the project root. `setup.sh` generates it automatically.
 | `GOOGLE_API_KEY` | No | _(same as above)_ | Alias for Gemini key used by some scripts |
 | `ANTIGRAVITY_API_KEY` | No | _(same as above)_ | Internal alias used by certain agent configurations |
 
-> **Offline mode**: Leave all API keys empty. The system uses `faster-whisper` (CPU) for transcription and local Ollama for LLM tasks. Install Ollama separately and pull `llama3` or `llama3.2-vision`.
+### 🤖 How to Use AI Features for Free
+NexusDesk supports two free AI providers for syllabus ingestion, event parsing, and notes summarization:
+
+1. **Option A: Google Gemini (Free API Key)** — *Recommended*
+   - Get a free-tier API key from [Google AI Studio](https://aistudio.google.com/).
+   - Add it to your `.env` file under `GEMINI_API_KEY`, `GOOGLE_API_KEY`, and `ANTIGRAVITY_API_KEY`.
+   - Ensure the toggle in your Web UI is set to **ANTIGRAVITY PRO**.
+2. **Option B: Local Ollama (100% Free & Offline)**
+   - Download and run **Ollama** from [ollama.com](https://ollama.com/).
+   - Pull the recommended models: `ollama pull llama3` (text) and `ollama pull llama3.2-vision` (images/screenshots).
+   - Ensure the toggle in your Web UI is set to **OLLAMA (LOCAL)**.
+3. **Local Audio Transcription (100% Free & Offline)**
+   - Convert recorded lectures to transcripts on your CPU offline.
+   - The Python script automatically downloads the `base.en` Whisper model (~150MB) on the first run; no API keys or servers required.
 
 ---
 
@@ -673,8 +657,10 @@ This regenerates `lib/api-client-react/src/generated/` and `lib/api-zod/src/gene
 | **Planner / Calendar** | ✅ Complete | Weekly/monthly view, exam timeline, session cancellations |
 | **Course Detail** | ✅ Complete | Grade ledger, attendance gauge, session list |
 | **Demo Mode** | ✅ Complete | `POST /api/demo/seed` seeds 5 courses, 290+ events, 250+ attendance records, 8 tasks, CGPA history |
-| **Hardcoded Path Fix** | ✅ Complete | All `/home/niranjan/...` paths replaced with `process.env.NEXUSDESK_ROOT` fallback |
+| **Hardcoded Path Fix** | ✅ Complete | All hardcoded user home paths replaced with `process.env.NEXUSDESK_ROOT` fallback |
 | **DB Indexes** | ✅ Complete | Indexes on `courseId`, `startTime`, `status`, `category`, `dueDate`, `recurringGroupId` |
+| **Class Notes (Audio)** | ✅ Complete | Live Web UI recording with mic, screen, tab, or mixed audio sources, auto-transcribe + summarize |
+| **Python Whisper Integration**| ✅ Complete | Local faster-whisper audio transcription support without API key |
 
 ### 📋 Planned
 
@@ -682,13 +668,11 @@ This regenerates `lib/api-client-react/src/generated/` and `lib/api-zod/src/gene
 |---|---|---|
 | **Projects Page** | Medium | Milestones, team members, linked tasks — backend ready, frontend stub present |
 | **Resources Page** | Medium | File library linked to courses — backend ready, frontend stub present |
-| **Class Notes (Audio)** | Medium | Record audio in-session, auto-transcribe + summarize via Whisper/Gemini |
 | **Artifacts Viewer** | Low | Browse all ingested notes, PDFs, transcripts |
 | **ICS Calendar Sync** | Medium | Export full semester schedule as `.ics` for import into Google Calendar |
 | **Offline PWA** | Low | Service worker for full offline operation |
 | **Bulk Attendance Mark** | Low | Mark entire week as present/absent in one click |
 | **Push Notifications** | Low | Browser notifications for upcoming sessions |
-| **Python Whisper Integration** | Medium | Local audio transcription without Gemini API key |
 | **Multi-semester View** | Low | Cross-semester CGPA graph, grade history |
 
 ---

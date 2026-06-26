@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { eventsTable, tasksTable, coursesTable, semestersTable, attendanceTable } from "@workspace/db";
 import { eq, and, gte, lte, sql, notInArray } from "drizzle-orm";
+import { resolveGeminiApiKey } from "../lib/utils";
 
 const router = Router();
 
@@ -196,7 +197,7 @@ router.post("/ingest", async (req, res): Promise<void> => {
 
   // 1. Determine the provider and API key
   const llmProvider = provider === "antigravity" || provider === "gemini" ? "antigravity" : "ollama";
-  const geminiApiKey = apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.ANTIGRAVITY_API_KEY;
+  const geminiApiKey = resolveGeminiApiKey(apiKey);
 
   if (llmProvider === "antigravity" && !geminiApiKey) {
     res.status(400).json({

@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
 import { exec } from "child_process";
+import { resolveGeminiApiKey } from "../lib/utils";
 
 const router = Router();
 const WORKSPACE_DIR = process.env.NEXUSDESK_ROOT || path.resolve(process.cwd(), "../..");
@@ -42,7 +43,7 @@ router.post("/record/process", async (req, res): Promise<void> => {
     fs.writeFileSync(audioFilePath, buffer);
 
     // Prepare execution context / environment variables
-    const apiKeyVal = geminiApiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.ANTIGRAVITY_API_KEY;
+    const apiKeyVal = resolveGeminiApiKey(geminiApiKey);
     const modelVal = geminiModel || process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
     // Step 1: Transcribe the audio

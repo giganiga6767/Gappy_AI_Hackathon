@@ -42,7 +42,7 @@ FE_PID=$!
 
 # 3. Start Lemma Agentic Backend (runs on port 4000)
 echo "Starting Lemma Agentic Backend on port 4000..."
-npx pnpm@9 --filter work-study-backend run dev &
+PORT=4000 npx pnpm@9 --filter work-study-backend run dev &
 BACKEND_PID=$!
 
 # Wait for all processes to complete
