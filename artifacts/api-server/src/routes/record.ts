@@ -35,7 +35,8 @@ router.post("/record/process", async (req, res): Promise<void> => {
 
     // Save audio file to recordings dir
     const extension = path.extname(fileName) || ".webm";
-    const baseName = `${sessionName.replace(/\s+/g, "_")}_${Date.now()}`;
+    const safeSessionName = sessionName.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const baseName = `${safeSessionName}_${Date.now()}`;
     const audioFileName = `${baseName}${extension}`;
     const audioFilePath = path.join(RECORDINGS_DIR, audioFileName);
 

@@ -76,7 +76,8 @@ router.post("/inbox/capture", async (req, res): Promise<void> => {
 
     if (fileBase64 && fileName) {
       const extension = path.extname(fileName);
-      const baseName = `${title.replace(/\s+/g, "_")}_${Date.now()}`;
+      const safeTitle = title.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const baseName = `${safeTitle}_${Date.now()}`;
       const savedFileName = `${baseName}${extension}`;
       const savedFilePath = path.join(RECORDINGS_DIR, savedFileName);
 
