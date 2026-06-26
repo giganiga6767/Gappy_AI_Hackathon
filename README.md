@@ -101,6 +101,14 @@ NexusDesk runs as **four cooperating processes** on your local machine:
 ### Inbox Pipeline — Capture → Understand → Apply
 The Inbox is the **entry point for all unstructured information**. It prevents AI hallucinations from directly corrupting your planner.
 
+NexusDesk features a **Supercharged AI Ingestion Engine** that can process a raw syllabus, timetable, or academic calendar PDF/image. With **one single upload**, the system:
+1. **Semester & Course Setup**: Identifies and creates the academic semester and all enrolled courses.
+2. **Weekly Timetable Mapping**: Automatically generates recurring calendar events for all lectures, labs, and tutorials (scheduling them correctly on their respective days of the week).
+3. **Proactive Study Plans & Milestones**: Instead of just extracting raw assignments, it automatically structures study prep tasks (e.g. revision tasks 7, 3, and 1 day before an exam) and breaks large projects into 3-4 incremental milestones leading up to the final due date.
+4. **AI Customized Study Strategy**: Injects a detailed markdown step-by-step study plan and curated links to online resources (YouTube videos, textbook notes, tools) directly into every task.
+5. **AI GPA Triage**: Generates triage and priority notes explaining each task's importance, estimated difficulty, and grading impact.
+6. **Semester Roadmap Digest**: Compiles a comprehensive workload timeline, survival rules, and focus areas into a Markdown Report that populates your Weekly Digest dashboard immediately.
+
 ```
 Capture  ──►  Understand (LLM)  ──►  Preview & Edit JSON  ──►  Apply to DB
 (status: captured)               (status: understood)          (status: applied)
@@ -426,11 +434,13 @@ python3 scripts/gemini_report_maker.py --data grades.csv --images chart1.png --t
 
 ---
 
-## 10. Agentic Backend — Lemma & Hackathon Architecture
+## 10. Agentic Backend & AI Copilot Architecture
 
-The Lemma backend runs on port `4000` and manages long-running agentic workflows. It leverages the **Lemma SDK** (`lemma-sdk`) as the core agent and data orchestrator, aligning directly with the **Gappy AI Hackathon** problem statements:
-- **AI Meeting to Execution Operator**: Turning messy lecture recordings/meeting transcripts (captured via Web UI or CLI) into structured tasks, deadlines, and priorities on a Neo-Brutalist Kanban execution board.
-- **AI Second Brain**: Linking files, schedules, and notes with proactive agent suggestions to guide study paths and debug project blockages.
+The Lemma backend runs on port `4000` and manages background agentic workflows. In parallel, a Google Gemini-driven **Academic Copilot** is fully embedded in the core Express API server and React frontend:
+- **AI Meeting to Execution Operator**: Converts unstructured transcripts and syllabus PDFs (captured via Web UI or CLI) into structured tasks, schedules, and priorities on a Neo-Brutalist Kanban execution board.
+- **Proactive Milestone Generator**: Intelligently creates spaced study prep tasks for exams and structures milestones for complex projects automatically.
+- **On-Demand AI Copilot**: Any manually added task can be instantly supercharged with a single click inside the task details view, generating a custom study strategy and curated video/text resource recommendations.
+- **AI Second Brain**: Feeds resources, schedules, and notes into background agents (via the Lemma SDK) to guide study paths and troubleshoot project blockages.
 
 ---
 
@@ -660,16 +670,16 @@ This regenerates `lib/api-client-react/src/generated/` and `lib/api-zod/src/gene
 | **Hardcoded Path Fix** | ✅ Complete | All hardcoded user home paths replaced with `process.env.NEXUSDESK_ROOT` fallback |
 | **DB Indexes** | ✅ Complete | Indexes on `courseId`, `startTime`, `status`, `category`, `dueDate`, `recurringGroupId` |
 | **Class Notes (Audio)** | ✅ Complete | Live Web UI recording with mic, screen, tab, or mixed audio sources, auto-transcribe + summarize |
+| **Resources Page** | ✅ Complete | Browsable per-course materials, custom document upload, and AI resource recommendations |
+| **Projects Page** | ✅ Complete | Progress entry logs, project details, linked tasks, and milestone timelines |
+| **ICS Calendar Sync** | ✅ Complete | Zero Lock-in ZIP export containing Google Calendar compatible `calendar.ics` |
 | **Python Whisper Integration**| ✅ Complete | Local faster-whisper audio transcription support without API key |
 
 ### 📋 Planned
 
 | Feature | Priority | Notes |
 |---|---|---|
-| **Projects Page** | Medium | Milestones, team members, linked tasks — backend ready, frontend stub present |
-| **Resources Page** | Medium | File library linked to courses — backend ready, frontend stub present |
 | **Artifacts Viewer** | Low | Browse all ingested notes, PDFs, transcripts |
-| **ICS Calendar Sync** | Medium | Export full semester schedule as `.ics` for import into Google Calendar |
 | **Offline PWA** | Low | Service worker for full offline operation |
 | **Bulk Attendance Mark** | Low | Mark entire week as present/absent in one click |
 | **Push Notifications** | Low | Browser notifications for upcoming sessions |
