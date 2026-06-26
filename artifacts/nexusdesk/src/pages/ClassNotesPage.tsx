@@ -87,6 +87,47 @@ export default function ClassNotesPage() {
   const [statusStep, setStatusStep] = useState<"idle" | "transcribing" | "generating" | "saving" | "complete">("idle");
   const [pipelineError, setPipelineError] = useState<string | null>(null);
   const [result, setResult] = useState<PipelineResult | null>(null);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+
+  // Poll audio pipeline status
+  useEffect(() => {
+    if (!activeJobId) return;
+    let timer: NodeJS.Timeout;
+
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/record/status/${activeJobId}`);
+        if (response.ok) {
+          const job = await response.json();
+          if (job.status === "complete") {
+            setStatusStep("complete");
+            setResult(job.result);
+            setActiveJobId(null);
+            toast({
+              title: "Pipeline Completed!",
+              description: `Generated notes and created ${job.result.tasksCreated} tasks successfully.`
+            });
+            fetchSavedNotes();
+          } else if (job.status === "failed") {
+            setStatusStep("idle");
+            setPipelineError(job.error || "Failed to run the notes pipeline");
+            setActiveJobId(null);
+          } else {
+            setStatusStep(job.status);
+          }
+        } else {
+          setActiveJobId(null);
+          setStatusStep("idle");
+          setPipelineError("Failed to fetch pipeline status");
+        }
+      } catch (err: any) {
+        console.error("Error polling job status:", err);
+      }
+    };
+
+    timer = setInterval(poll, 3000);
+    return () => clearInterval(timer);
+  }, [activeJobId]);
 
   // Saved Notes list
   const [savedNotes, setSavedNotes] = useState<SavedNoteResource[]>([]);
@@ -362,20 +403,8 @@ export default function ClassNotesPage() {
         throw new Error(errData.details || errData.error || "Failed to process audio");
       }
 
-      // Transition loading indicator
-      setStatusStep("generating");
-      await new Promise(r => setTimeout(r, 1000));
-      setStatusStep("saving");
-      
-      const data: PipelineResult = await response.json();
-      
-      setStatusStep("complete");
-      setResult(data);
-      toast({
-        title: "Pipeline Completed!",
-        description: `Generated notes and created ${data.tasksCreated} tasks successfully.`
-      });
-      fetchSavedNotes();
+      const data = await response.json();
+      setActiveJobId(data.jobId);
     } catch (err: any) {
       console.error(err);
       setPipelineError(err.message || "Failed to run the notes pipeline");

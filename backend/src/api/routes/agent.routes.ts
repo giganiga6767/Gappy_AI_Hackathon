@@ -8,7 +8,31 @@ import {
 import { previewTriage, applyTriage } from "../../agents/backlogTriageAgent";
 import { previewResources, applyResources } from "../../agents/resourceRecommenderAgent";
 
+import { runNow as runAcademicCopilot } from "../../workflows/academicCronJob";
+import { runWeeklyDigest } from "../../workflows/weeklyDigestWorkflow";
+
 const router = Router();
+
+router.post("/events", async (req: Request, res: Response) => {
+  const { event, data } = req.body as { event: string; data: any };
+  console.log(`[BackendEvents] Received webhook event: ${event}`, data);
+
+  res.status(202).json({ accepted: true });
+
+  (async () => {
+    try {
+      if (event === "task:created" || event === "task:updated") {
+        console.log("[BackendEvents] Running academic copilot scanner...");
+        await runAcademicCopilot();
+      } else if (event === "syllabus:applied") {
+        console.log("[BackendEvents] Syllabus applied. Building new weekly digest...");
+        await runWeeklyDigest();
+      }
+    } catch (err) {
+      console.error(`[BackendEvents] Failed to process event ${event}:`, err);
+    }
+  })();
+});
 
 router.get("/study-plan/preview", async (_req: Request, res: Response, next: NextFunction) => {
   try {

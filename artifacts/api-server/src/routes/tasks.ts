@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { tasksTable, coursesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { resolveGeminiApiKey } from "../lib/utils";
+import { emitEvent } from "../lib/events";
 
 const router = Router();
 
@@ -34,6 +35,7 @@ router.post("/tasks", async (req, res): Promise<void> => {
     ...(linkedCourseId && { linkedCourseId }),
     ...(linkedProjectId && { linkedProjectId }),
   }).returning();
+  emitEvent("task:created", { id: row.id });
   res.status(201).json(row);
 });
 
@@ -58,6 +60,7 @@ router.patch("/tasks/:taskId", async (req, res): Promise<void> => {
     .where(eq(tasksTable.id, req.params.taskId))
     .returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
+  emitEvent("task:updated", { id: row.id, status: row.status });
   res.json(row);
 });
 

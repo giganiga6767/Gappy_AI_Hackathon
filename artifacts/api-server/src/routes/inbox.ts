@@ -7,6 +7,7 @@ import path from "path";
 import { exec, execSync } from "child_process";
 import { LemmaClient } from "lemma-sdk";
 import { resolveGeminiApiKey } from "../lib/utils";
+import { emitEvent } from "../lib/events";
 
 const router = Router();
 // Resolve workspace root: env override > relative from server package > cwd
@@ -199,7 +200,7 @@ async function callOllama(prompt: string, base64Image?: string): Promise<string>
   return data.response.trim();
 }
 
-// 5. Understand Endpoint
+// 5. Understand Endpoint (Non-blocking Background Task)
 router.post("/inbox/:id/understand", async (req, res): Promise<void> => {
   const { provider, apiKey, useLocalWhisper } = req.body;
   const { id } = req.params;
@@ -219,98 +220,102 @@ router.post("/inbox/:id/understand", async (req, res): Promise<void> => {
       return;
     }
 
-    let rawTextToAnalyze = item.rawText || "";
-    let base64Image: string | undefined = undefined;
-    let computedArtifacts: any[] = [];
+    // Immediately set status to "understanding" and respond to client
+    await db.update(inboxTable).set({ status: "understanding" }).where(eq(inboxTable.id, id));
+    res.status(202).json({ success: true, status: "understanding" });
 
-    // Step A: Ingestion based on type
-    if (item.type === "audio" || item.type === "recording") {
-      if (!item.filePath || !fs.existsSync(item.filePath)) {
-        res.status(400).json({ error: "Audio file path is missing or file does not exist." });
-        return;
-      }
+    // Run long-running transcription and LLM analysis in background
+    (async () => {
+      try {
+        let rawTextToAnalyze = item.rawText || "";
+        let base64Image: string | undefined = undefined;
+        let computedArtifacts: any[] = [];
 
-      // Transcribe the audio
-      const localFlag = useLocalWhisper ? " --local" : "";
-      const transcriberCmd = `python3 scripts/class_transcriber.py "${item.filePath}"${localFlag}`;
+        // Step A: Ingestion based on type
+        if (item.type === "audio" || item.type === "recording") {
+          if (!item.filePath || !fs.existsSync(item.filePath)) {
+            throw new Error("Audio file path is missing or file does not exist.");
+          }
 
-      await new Promise<void>((resolve, reject) => {
-        exec(transcriberCmd, {
-          cwd: WORKSPACE_DIR,
-          env: { ...process.env, GEMINI_API_KEY: geminiApiKey }
-        }, (err, stdout, stderr) => {
-          if (err) reject(new Error(`Audio transcription failed: ${stderr || err.message}`));
-          else resolve();
-        });
-      });
+          // Transcribe the audio
+          const localFlag = useLocalWhisper ? " --local" : "";
+          const transcriberCmd = `python3 scripts/class_transcriber.py "${item.filePath}"${localFlag}`;
 
-      const txtFilePath = item.filePath.replace(/\.[^/.]+$/, ".txt");
-      if (!fs.existsSync(txtFilePath)) {
-        res.status(500).json({ error: "Transcription completed but output text file was not generated." });
-        return;
-      }
+          await new Promise<void>((resolve, reject) => {
+            exec(transcriberCmd, {
+              cwd: WORKSPACE_DIR,
+              env: { ...process.env, GEMINI_API_KEY: geminiApiKey }
+            }, (err, stdout, stderr) => {
+              if (err) reject(new Error(`Audio transcription failed: ${stderr || err.message}`));
+              else resolve();
+            });
+          });
 
-      // Read transcribed text
-      rawTextToAnalyze = fs.readFileSync(txtFilePath, "utf-8");
+          const txtFilePath = item.filePath.replace(/\.[^/.]+$/, ".txt");
+          if (!fs.existsSync(txtFilePath)) {
+            throw new Error("Transcription completed but output text file was not generated.");
+          }
 
-      // Generate structured notes from transcript using note-taker script
-      const context = "Academic class session notes. Focus on topics discussed and assignments.";
-      const noteTakerCmd = `python3 scripts/gemini_note_taker.py "${txtFilePath}" "${context}"`;
+          // Read transcribed text
+          rawTextToAnalyze = fs.readFileSync(txtFilePath, "utf-8");
 
-      await new Promise<void>((resolve, reject) => {
-        exec(noteTakerCmd, {
-          cwd: WORKSPACE_DIR,
-          env: { ...process.env, GEMINI_API_KEY: geminiApiKey }
-        }, (err, stdout, stderr) => {
-          // Cleanup raw transcript txt
-          try { fs.unlinkSync(txtFilePath); } catch {}
-          if (err) reject(new Error(`Notes generation failed: ${stderr || err.message}`));
-          else resolve();
-        });
-      });
+          // Generate structured notes from transcript using note-taker script
+          const context = "Academic class session notes. Focus on topics discussed and assignments.";
+          const noteTakerCmd = `python3 scripts/gemini_note_taker.py "${txtFilePath}" "${context}"`;
 
-      const notesMdPath = item.filePath.replace(/\.[^/.]+$/, ".notes.md");
-      const notesDocxPath = item.filePath.replace(/\.[^/.]+$/, ".notes.docx");
+          await new Promise<void>((resolve, reject) => {
+            exec(noteTakerCmd, {
+              cwd: WORKSPACE_DIR,
+              env: { ...process.env, GEMINI_API_KEY: geminiApiKey }
+            }, (err, stdout, stderr) => {
+              // Cleanup raw transcript txt
+              try { fs.unlinkSync(txtFilePath); } catch {}
+              if (err) reject(new Error(`Notes generation failed: ${stderr || err.message}`));
+              else resolve();
+            });
+          });
 
-      if (fs.existsSync(notesMdPath)) {
-        computedArtifacts.push({
-          title: `${item.title} Notes (Markdown)`,
-          type: "NOTE",
-          filePath: notesMdPath,
-          url: `/api/recordings/download?path=${encodeURIComponent(notesMdPath)}`
-        });
-      }
+          const notesMdPath = item.filePath.replace(/\.[^/.]+$/, ".notes.md");
+          const notesDocxPath = item.filePath.replace(/\.[^/.]+$/, ".notes.docx");
 
-      if (fs.existsSync(notesDocxPath)) {
-        computedArtifacts.push({
-          title: `${item.title} Notes (Word)`,
-          type: "PDF",
-          filePath: notesDocxPath,
-          url: `/api/recordings/download?path=${encodeURIComponent(notesDocxPath)}`
-        });
-      }
+          if (fs.existsSync(notesMdPath)) {
+            computedArtifacts.push({
+              title: `${item.title} Notes (Markdown)`,
+              type: "NOTE",
+              filePath: notesMdPath,
+              url: `/api/recordings/download?path=${encodeURIComponent(notesMdPath)}`
+            });
+          }
 
-      computedArtifacts.push({
-        title: `${item.title} (Audio Recording)`,
-        type: "VIDEO",
-        filePath: item.filePath,
-        url: `/api/recordings/download?path=${encodeURIComponent(item.filePath)}`
-      });
+          if (fs.existsSync(notesDocxPath)) {
+            computedArtifacts.push({
+              title: `${item.title} Notes (Word)`,
+              type: "PDF",
+              filePath: notesDocxPath,
+              url: `/api/recordings/download?path=${encodeURIComponent(notesDocxPath)}`
+            });
+          }
 
-    } else if (item.type === "image" || item.type === "pdf") {
-      if (!item.filePath || !fs.existsSync(item.filePath)) {
-        res.status(400).json({ error: `${item.type === "pdf" ? "PDF" : "Image"} file is missing.` });
-        return;
-      }
-      const fileBuffer = fs.readFileSync(item.filePath);
-      const isPdf = item.type === "pdf";
-      const mimeType = isPdf ? "application/pdf" : "image/png";
-      base64Image = `data:${mimeType};base64,${fileBuffer.toString("base64")}`;
-    }
+          computedArtifacts.push({
+            title: `${item.title} (Audio Recording)`,
+            type: "VIDEO",
+            filePath: item.filePath,
+            url: `/api/recordings/download?path=${encodeURIComponent(item.filePath)}`
+          });
 
-    // Step B: Ask LLM to extract entity relations in our simplified product model
-    const currentDate = new Date().toISOString().split("T")[0];
-    const prompt = `You are a highly advanced academic strategist, scheduler, and curriculum parser.
+        } else if (item.type === "image" || item.type === "pdf") {
+          if (!item.filePath || !fs.existsSync(item.filePath)) {
+            throw new Error(`${item.type === "pdf" ? "PDF" : "Image"} file is missing.`);
+          }
+          const fileBuffer = fs.readFileSync(item.filePath);
+          const isPdf = item.type === "pdf";
+          const mimeType = isPdf ? "application/pdf" : "image/png";
+          base64Image = `data:${mimeType};base64,${fileBuffer.toString("base64")}`;
+        }
+
+        // Step B: Ask LLM to extract entity relations in our simplified product model
+        const currentDate = new Date().toISOString().split("T")[0];
+        const prompt = `You are a highly advanced academic strategist, scheduler, and curriculum parser.
 Analyze this academic document (syllabus, calendar, timetable, assignment guidelines, or notes) and generate a comprehensive, pre-scheduled, and highly-optimized semester roadmap.
 Current Date: ${currentDate}
 
@@ -397,41 +402,132 @@ Only return a valid JSON object matching this schema. If any section is empty, r
 Content to analyze:
 ${rawTextToAnalyze}`;
 
-    let llmResponse = "";
-    if (llmProvider === "gemini") {
-      llmResponse = await callGemini(prompt, geminiApiKey!, base64Image);
-    } else {
-      llmResponse = await callOllama(prompt, base64Image);
-    }
+        let llmResponse = "";
+        if (llmProvider === "gemini") {
+          llmResponse = await callGemini(prompt, geminiApiKey!, base64Image);
+        } else {
+          llmResponse = await callOllama(prompt, base64Image);
+        }
 
-    const jsonMatch = llmResponse.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error(`Could not parse JSON from LLM: ${llmResponse}`);
-    }
-    const analysisJson = JSON.parse(jsonMatch[0]);
+        const jsonMatch = llmResponse.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error(`Could not parse JSON from LLM: ${llmResponse}`);
+        }
+        const analysisJson = JSON.parse(jsonMatch[0]);
 
-    // Merge computed artifacts from transcription pipeline
-    if (computedArtifacts.length > 0) {
-      if (!analysisJson.artifacts) analysisJson.artifacts = [];
-      const defaultCourseCode = analysisJson.courses?.[0]?.subjectCode || "";
-      computedArtifacts.forEach(art => {
-        art.subjectCode = art.subjectCode || defaultCourseCode;
-        analysisJson.artifacts.push(art);
-      });
-    }
+        // Merge computed artifacts from transcription pipeline
+        if (computedArtifacts.length > 0) {
+          if (!analysisJson.artifacts) analysisJson.artifacts = [];
+          const defaultCourseCode = analysisJson.courses?.[0]?.subjectCode || "";
+          computedArtifacts.forEach(art => {
+            art.subjectCode = art.subjectCode || defaultCourseCode;
+            analysisJson.artifacts.push(art);
+          });
+        }
 
-    // Update database
-    await db.update(inboxTable).set({
-      rawText: rawTextToAnalyze || item.rawText,
-      analysis: JSON.stringify(analysisJson),
-      status: "understood"
-    }).where(eq(inboxTable.id, id));
+        // Update database
+        await db.update(inboxTable).set({
+          rawText: rawTextToAnalyze || item.rawText,
+          analysis: JSON.stringify(analysisJson),
+          status: "understood"
+        }).where(eq(inboxTable.id, id));
 
-    res.json({ success: true, analysis: analysisJson });
+      } catch (err: any) {
+        console.error(`[BackgroundUnderstand] Error analyzing item ${id}:`, err);
+        await db.update(inboxTable).set({
+          status: "failed",
+          analysis: JSON.stringify({ error: err.message || "Unknown error during AI analysis" })
+        }).where(eq(inboxTable.id, id));
+      }
+    })();
 
   } catch (err: any) {
-    console.error("Understand handler error:", err);
-    res.status(500).json({ error: "Failed to understand inbox item", details: err.message });
+    console.error("Understand handler startup error:", err);
+    res.status(500).json({ error: "Failed to initiate inbox item understanding", details: err.message });
+  }
+});
+
+// 5b. Smart Inbox Conflict Resolution
+router.post("/inbox/:id/conflicts", async (req, res): Promise<void> => {
+  const payload = req.body;
+  const conflicts = {
+    courses: [] as any[],
+    sessions: [] as any[],
+    actions: [] as any[]
+  };
+
+  const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+  try {
+    const [activeSem] = await db.select().from(semestersTable).where(eq(semestersTable.isActive, true)).limit(1);
+    if (!activeSem) {
+      res.json(conflicts);
+      return;
+    }
+
+    // 1. Check Course Code Conflicts
+    if (payload.courses && Array.isArray(payload.courses)) {
+      for (const c of payload.courses) {
+        if (!c.subjectCode) continue;
+        const [existing] = await db.select().from(coursesTable)
+          .where(and(eq(coursesTable.subjectCode, c.subjectCode), eq(coursesTable.semesterId, activeSem.id)))
+          .limit(1);
+        if (existing && existing.name.toLowerCase() !== c.name.toLowerCase()) {
+          conflicts.courses.push({
+            subjectCode: c.subjectCode,
+            warning: `Code "${c.subjectCode}" is already registered in active semester as "${existing.name}" (incoming is "${c.name}").`
+          });
+        }
+      }
+    }
+
+    // 2. Check Schedule Conflicts (Time Overlaps)
+    const existingEvents = await db.select().from(eventsTable);
+    if (payload.sessions && Array.isArray(payload.sessions)) {
+      for (const sess of payload.sessions) {
+        if (sess.dayOfWeek !== undefined) {
+          for (const ev of existingEvents) {
+            if (!ev.isRecurring) continue;
+            const evStart = new Date(ev.startTime);
+            const evEnd = new Date(ev.endTime);
+            if (evStart.getDay() === sess.dayOfWeek) {
+              const existingStartMin = evStart.getHours() * 60 + evStart.getMinutes();
+              const existingEndMin = evEnd.getHours() * 60 + evEnd.getMinutes();
+              const incomingStartMin = (sess.startHour ?? 9) * 60 + (sess.startMinute ?? 0);
+              const incomingEndMin = (sess.endHour ?? 10) * 60 + (sess.endMinute ?? 0);
+
+              const overlap = Math.max(existingStartMin, incomingStartMin) < Math.min(existingEndMin, incomingEndMin);
+              if (overlap) {
+                const formatTime = (h: number, m: number) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+                conflicts.sessions.push({
+                  title: sess.title,
+                  warning: `"${sess.title}" (${formatTime(sess.startHour ?? 9, sess.startMinute ?? 0)} - ${formatTime(sess.endHour ?? 10, sess.endMinute ?? 0)}) overlaps with existing class "${ev.title}" (${formatTime(evStart.getHours(), evStart.getMinutes())} - ${formatTime(evEnd.getHours(), evEnd.getMinutes())}) on ${DAY_NAMES[sess.dayOfWeek]}.`
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 3. Check Task Duplicates
+    if (payload.actions && Array.isArray(payload.actions)) {
+      for (const act of payload.actions) {
+        if (!act.title) continue;
+        const [existing] = await db.select().from(tasksTable).where(eq(tasksTable.title, act.title)).limit(1);
+        if (existing) {
+          conflicts.actions.push({
+            title: act.title,
+            warning: `Task "${act.title}" already exists in your checklist.`
+          });
+        }
+      }
+    }
+
+    res.json(conflicts);
+  } catch (err: any) {
+    console.error("Conflict checking error:", err);
+    res.status(500).json({ error: "Failed to check conflicts", details: err.message });
   }
 });
 
@@ -687,6 +783,8 @@ router.post("/inbox/:id/apply", async (req, res): Promise<void> => {
       status: "applied",
       analysis: JSON.stringify(finalPayload)
     }).where(eq(inboxTable.id, id));
+
+    emitEvent("syllabus:applied", { id });
 
     res.json({ success: true });
   } catch (err: any) {

@@ -17,6 +17,38 @@ if (!fs.existsSync(RECORDINGS_DIR)) {
 }
 
 // 1. Process base64 audio and trigger pipeline
+import crypto from "crypto";
+
+interface ProcessingJob {
+  id: string;
+  sessionName: string;
+  courseCode: string;
+  status: "transcribing" | "generating" | "saving" | "complete" | "failed";
+  error?: string;
+  result?: {
+    success: boolean;
+    notes: string;
+    tasksCreated: number;
+    resourcesCreated: number;
+    audioUrl: string;
+    notesUrl: string;
+  };
+}
+
+const activeJobs: Record<string, ProcessingJob> = {};
+
+// Status endpoint for non-blocking audio pipeline
+router.get("/record/status/:jobId", async (req, res): Promise<void> => {
+  const { jobId } = req.params;
+  const job = activeJobs[jobId];
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+  res.json(job);
+});
+
+// 1. Process base64 audio and trigger pipeline
 router.post("/record/process", async (req, res): Promise<void> => {
   const { audio, fileName, courseId, sessionName, useLocalWhisper, geminiApiKey, geminiModel } = req.body;
 
@@ -33,6 +65,14 @@ router.post("/record/process", async (req, res): Promise<void> => {
       return;
     }
 
+    const jobId = crypto.randomUUID();
+    activeJobs[jobId] = {
+      id: jobId,
+      sessionName,
+      courseCode: course.subjectCode,
+      status: "transcribing"
+    };
+
     // Save audio file to recordings dir
     const extension = path.extname(fileName) || ".webm";
     const safeSessionName = sessionName.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -43,168 +83,198 @@ router.post("/record/process", async (req, res): Promise<void> => {
     const buffer = Buffer.from(audio, "base64");
     fs.writeFileSync(audioFilePath, buffer);
 
-    // Prepare execution context / environment variables
-    const apiKeyVal = resolveGeminiApiKey(geminiApiKey);
-    const modelVal = geminiModel || process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    // Immediately respond with 202 Accepted
+    res.status(202).json({ success: true, jobId });
 
-    // Step 1: Transcribe the audio
-    const localFlag = useLocalWhisper ? " --local" : "";
-    const transcriberCmd = `python3 scripts/class_transcriber.py "${audioFilePath}"${localFlag}`;
+    // Run the pipeline in the background
+    (async () => {
+      try {
+        // Prepare execution context / environment variables
+        const apiKeyVal = resolveGeminiApiKey(geminiApiKey);
+        const modelVal = geminiModel || process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-    exec(transcriberCmd, {
-      cwd: WORKSPACE_DIR,
-      env: {
-        ...process.env,
-        GEMINI_API_KEY: apiKeyVal,
-        GEMINI_MODEL: modelVal,
-      }
-    }, async (transcribeErr, stdout, stderr) => {
-      if (transcribeErr) {
-        console.error("Transcriber execution error:", transcribeErr, stderr);
-        res.status(500).json({
-          error: "Audio transcription failed",
-          details: stderr || transcribeErr.message
-        });
-        return;
-      }
+        // Step 1: Transcribe the audio
+        const localFlag = useLocalWhisper ? " --local" : "";
+        const transcriberCmd = `python3 scripts/class_transcriber.py "${audioFilePath}"${localFlag}`;
 
-      const txtFilePath = audioFilePath.replace(extension, ".txt");
-      if (!fs.existsSync(txtFilePath)) {
-        res.status(500).json({ error: "Transcription completed but output text file was not generated." });
-        return;
-      }
-
-      // Step 2: Generate notes using Note-Taker script
-      // Pass the course info as context to help the note-taker do a better job
-      const context = `${course.subjectCode} - ${course.name} class session notes. Focus on topics discussed and assignments.`;
-      const noteTakerCmd = `python3 scripts/gemini_note_taker.py "${txtFilePath}" "${context}"`;
-
-      exec(noteTakerCmd, {
-        cwd: WORKSPACE_DIR,
-        env: {
-          ...process.env,
-          GEMINI_API_KEY: apiKeyVal,
-          GEMINI_MODEL: modelVal,
-        }
-      }, async (notesErr, nStdout, nStderr) => {
-        // Clean up raw .txt transcript to save space if needed
-        try {
-          if (fs.existsSync(txtFilePath)) {
-            fs.unlinkSync(txtFilePath);
+        exec(transcriberCmd, {
+          cwd: WORKSPACE_DIR,
+          env: {
+            ...process.env,
+            GEMINI_API_KEY: apiKeyVal,
+            GEMINI_MODEL: modelVal,
           }
-        } catch (e) {
-          console.warn("Could not delete temporary txt transcript file:", e);
-        }
+        }, async (transcribeErr, stdout, stderr) => {
+          if (transcribeErr) {
+            console.error("Transcriber execution error:", transcribeErr, stderr);
+            activeJobs[jobId] = {
+              ...activeJobs[jobId],
+              status: "failed",
+              error: stderr || transcribeErr.message
+            };
+            return;
+          }
 
-        if (notesErr) {
-          console.error("Note taker execution error:", notesErr, nStderr);
-          res.status(500).json({
-            error: "Notes generation failed",
-            details: nStderr || notesErr.message
-          });
-          return;
-        }
+          const txtFilePath = audioFilePath.replace(extension, ".txt");
+          if (!fs.existsSync(txtFilePath)) {
+            activeJobs[jobId] = {
+              ...activeJobs[jobId],
+              status: "failed",
+              error: "Transcription completed but output text file was not generated."
+            };
+            return;
+          }
 
-        const notesMdPath = audioFilePath.replace(extension, ".notes.md");
-        const notesDocxPath = audioFilePath.replace(extension, ".notes.docx");
+          // Step 2: Generate notes using Note-Taker script
+          activeJobs[jobId].status = "generating";
+          const context = `${course.subjectCode} - ${course.name} class session notes. Focus on topics discussed and assignments.`;
+          const noteTakerCmd = `python3 scripts/gemini_note_taker.py "${txtFilePath}" "${context}"`;
 
-        if (!fs.existsSync(notesMdPath)) {
-          res.status(500).json({ error: "Notes generation finished but markdown file was not generated." });
-          return;
-        }
-
-        // Step 3: Parse markdown and create tasks/resources
-        const notesContent = fs.readFileSync(notesMdPath, "utf-8");
-        const lines = notesContent.split("\n");
-        let inActionItems = false;
-        const actionItems: string[] = [];
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed.startsWith("#")) {
-            const headingText = trimmed.replace(/^#+\s+/, "").toLowerCase();
-            if (headingText.includes("action item") || headingText.includes("task") || headingText.includes("todo")) {
-              inActionItems = true;
-            } else {
-              inActionItems = false;
+          exec(noteTakerCmd, {
+            cwd: WORKSPACE_DIR,
+            env: {
+              ...process.env,
+              GEMINI_API_KEY: apiKeyVal,
+              GEMINI_MODEL: modelVal,
             }
-            continue;
-          }
-          if (inActionItems) {
-            if (trimmed.startsWith("-") || trimmed.startsWith("*") || /^\d+\.\s/.test(trimmed)) {
-              const itemText = trimmed.replace(/^[-*\d.]+\s+/, "");
-              if (itemText) {
-                actionItems.push(itemText);
+          }, async (notesErr, nStdout, nStderr) => {
+            // Clean up raw .txt transcript to save space if needed
+            try {
+              if (fs.existsSync(txtFilePath)) {
+                fs.unlinkSync(txtFilePath);
+              }
+            } catch (e) {
+              console.warn("Could not delete temporary txt transcript file:", e);
+            }
+
+            if (notesErr) {
+              console.error("Note taker execution error:", notesErr, nStderr);
+              activeJobs[jobId] = {
+                ...activeJobs[jobId],
+                status: "failed",
+                error: nStderr || notesErr.message
+              };
+              return;
+            }
+
+            const notesMdPath = audioFilePath.replace(extension, ".notes.md");
+            const notesDocxPath = audioFilePath.replace(extension, ".notes.docx");
+
+            if (!fs.existsSync(notesMdPath)) {
+              activeJobs[jobId] = {
+                ...activeJobs[jobId],
+                status: "failed",
+                error: "Notes generation finished but markdown file was not generated."
+              };
+              return;
+            }
+
+            // Step 3: Parse markdown and create tasks/resources
+            activeJobs[jobId].status = "saving";
+            const notesContent = fs.readFileSync(notesMdPath, "utf-8");
+            const lines = notesContent.split("\n");
+            let inActionItems = false;
+            const actionItems: string[] = [];
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (trimmed.startsWith("#")) {
+                const headingText = trimmed.replace(/^#+\s+/, "").toLowerCase();
+                if (headingText.includes("action item") || headingText.includes("task") || headingText.includes("todo")) {
+                  inActionItems = true;
+                } else {
+                  inActionItems = false;
+                }
+                continue;
+              }
+              if (inActionItems) {
+                if (trimmed.startsWith("-") || trimmed.startsWith("*") || /^\d+\.\s/.test(trimmed)) {
+                  const itemText = trimmed.replace(/^[-*\d.]+\s+/, "");
+                  if (itemText) {
+                    actionItems.push(itemText);
+                  }
+                }
               }
             }
-          }
-        }
 
-        // Insert extracted tasks
-        let tasksCreated = 0;
-        for (const item of actionItems) {
-          try {
-            await db.insert(tasksTable).values({
-              title: item,
-              category: "ACADEMICS",
-              priority: "MEDIUM",
-              description: `Extracted from class session: ${sessionName}`,
-              linkedCourseId: courseId
-            });
-            tasksCreated++;
-          } catch (taskErr) {
-            console.error("Failed to insert task:", taskErr);
-          }
-        }
+            // Insert extracted tasks
+            let tasksCreated = 0;
+            for (const item of actionItems) {
+              try {
+                await db.insert(tasksTable).values({
+                  title: item,
+                  category: "ACADEMICS",
+                  priority: "MEDIUM",
+                  description: `Extracted from class session: ${sessionName}`,
+                  linkedCourseId: courseId
+                });
+                tasksCreated++;
+              } catch (taskErr) {
+                console.error("Failed to insert task:", taskErr);
+              }
+            }
 
-        // Insert resources (Audio, Markdown notes, Word notes)
-        let resourcesCreated = 0;
-        try {
-          // Audio resource
-          await db.insert(resourcesTable).values({
-            title: `${sessionName} (Audio Recording)`,
-            type: "VIDEO",
-            courseId: courseId,
-            filePath: audioFilePath,
-            url: `/api/recordings/download?path=${encodeURIComponent(audioFilePath)}`
+            // Insert resources (Audio, Markdown notes, Word notes)
+            let resourcesCreated = 0;
+            try {
+              // Audio resource
+              await db.insert(resourcesTable).values({
+                title: `${sessionName} (Audio Recording)`,
+                type: "VIDEO",
+                courseId: courseId,
+                filePath: audioFilePath,
+                url: `/api/recordings/download?path=${encodeURIComponent(audioFilePath)}`
+              });
+              resourcesCreated++;
+
+              // Markdown Notes
+              await db.insert(resourcesTable).values({
+                title: `${sessionName} Notes (Markdown)`,
+                type: "NOTE",
+                courseId: courseId,
+                filePath: notesMdPath,
+                url: `/api/recordings/download?path=${encodeURIComponent(notesMdPath)}`
+              });
+              resourcesCreated++;
+
+              // Word Notes
+              if (fs.existsSync(notesDocxPath)) {
+                await db.insert(resourcesTable).values({
+                  title: `${sessionName} Notes (Word)`,
+                  type: "PDF",
+                  courseId: courseId,
+                  filePath: notesDocxPath,
+                  url: `/api/recordings/download?path=${encodeURIComponent(notesDocxPath)}`
+                });
+                resourcesCreated++;
+              }
+            } catch (resourceErr) {
+              console.error("Failed to save resources:", resourceErr);
+            }
+
+            activeJobs[jobId] = {
+              ...activeJobs[jobId],
+              status: "complete",
+              result: {
+                success: true,
+                notes: notesContent,
+                tasksCreated,
+                resourcesCreated,
+                audioUrl: `/api/recordings/download?path=${encodeURIComponent(audioFilePath)}`,
+                notesUrl: `/api/recordings/download?path=${encodeURIComponent(notesMdPath)}`
+              }
+            };
           });
-          resourcesCreated++;
-
-          // Markdown Notes
-          await db.insert(resourcesTable).values({
-            title: `${sessionName} Notes (Markdown)`,
-            type: "NOTE",
-            courseId: courseId,
-            filePath: notesMdPath,
-            url: `/api/recordings/download?path=${encodeURIComponent(notesMdPath)}`
-          });
-          resourcesCreated++;
-
-          // Word Notes
-          if (fs.existsSync(notesDocxPath)) {
-            await db.insert(resourcesTable).values({
-              title: `${sessionName} Notes (Word)`,
-              type: "PDF", // Using PDF/Document category placeholder or fallback
-              courseId: courseId,
-              filePath: notesDocxPath,
-              url: `/api/recordings/download?path=${encodeURIComponent(notesDocxPath)}`
-            });
-            resourcesCreated++;
-          }
-        } catch (resourceErr) {
-          console.error("Failed to save resources:", resourceErr);
-        }
-
-        res.json({
-          success: true,
-          notes: notesContent,
-          tasksCreated,
-          resourcesCreated,
-          audioUrl: `/api/recordings/download?path=${encodeURIComponent(audioFilePath)}`,
-          notesUrl: `/api/recordings/download?path=${encodeURIComponent(notesMdPath)}`,
         });
-      });
-    });
+      } catch (backgroundErr: any) {
+        console.error("Background processing start failure:", backgroundErr);
+        activeJobs[jobId] = {
+          ...activeJobs[jobId],
+          status: "failed",
+          error: backgroundErr.message || "Failed to start background audio pipeline"
+        };
+      }
+    })();
 
   } catch (err: any) {
     console.error("Error processing recording:", err);

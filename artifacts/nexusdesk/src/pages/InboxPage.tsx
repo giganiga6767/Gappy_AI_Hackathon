@@ -441,9 +441,57 @@ export default function InboxPage() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("gemini_api_key") || "");
   const [provider, setProvider] = useState(() => localStorage.getItem("llm_provider") || "gemini");
 
+  const [conflicts, setConflicts] = useState<{
+    courses: Array<{ subjectCode: string; warning: string }>;
+    sessions: Array<{ title: string; warning: string }>;
+    actions: Array<{ title: string; warning: string }>;
+  } | null>(null);
+  const [checkingConflicts, setCheckingConflicts] = useState(false);
+
   useEffect(() => {
     fetchItems();
   }, []);
+
+  // Poll items while any item is in "understanding" status
+  useEffect(() => {
+    const hasUnderstanding = items.some(item => item.status === "understanding");
+    let interval: NodeJS.Timeout | undefined;
+    if (hasUnderstanding) {
+      interval = setInterval(() => {
+        fetchItems();
+      }, 3000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [items]);
+
+  // Check conflicts when previewing or editing previewPayload
+  const checkConflicts = async (payload: ExtractedPayload) => {
+    setCheckingConflicts(true);
+    try {
+      const res = await fetch(`/api/inbox/${previewId}/conflicts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setConflicts(await res.json());
+      }
+    } catch (e) {
+      console.error("Conflict checking failed:", e);
+    } finally {
+      setCheckingConflicts(false);
+    }
+  };
+
+  useEffect(() => {
+    if (previewPayload && previewId) {
+      checkConflicts(previewPayload);
+    } else {
+      setConflicts(null);
+    }
+  }, [previewPayload, previewId]);
 
   const fetchItems = async () => {
     try {
@@ -577,17 +625,6 @@ export default function InboxPage() {
         body: JSON.stringify({ provider, apiKey }),
       });
       if (res.ok) {
-        const data = await res.json();
-        const parsed: ExtractedPayload = {
-          semester: data.analysis?.semester,
-          courses: data.analysis?.courses || [],
-          sessions: data.analysis?.sessions || [],
-          artifacts: data.analysis?.artifacts || [],
-          actions: data.analysis?.actions || [],
-          weeklyDigest: data.analysis?.weeklyDigest,
-        };
-        setPreviewPayload(parsed);
-        setPreviewId(item.id);
         fetchItems();
       } else {
         const err = await res.json();
@@ -846,19 +883,28 @@ export default function InboxPage() {
                     <span className={`font-mono text-[9px] font-bold px-1.5 py-0.5 border border-ink ml-2 flex-shrink-0 uppercase ${
                       item.status === "applied" ? "bg-sageLight text-sageDark" :
                       item.status === "understood" ? "bg-amberLight text-amber" :
+                      item.status === "understanding" ? "bg-sky-100 text-sky-700 animate-pulse" :
+                      item.status === "failed" ? "bg-red-100 text-red-700" :
                       "bg-surface text-inkLight"
                     }`}>
                       {item.status}
                     </span>
                   </div>
                   <div className="flex gap-2 pt-1 border-t border-dashed border-inkFaint">
-                    {item.status === "captured" ? (
+                    {item.status === "understanding" ? (
+                      <button
+                        disabled
+                        className="flex-1 py-1 bg-surface border border-ink text-inkLight font-mono text-[10px] font-bold animate-pulse"
+                      >
+                        ⚙️ AI IS ANALYZING...
+                      </button>
+                    ) : item.status === "captured" || item.status === "failed" ? (
                       <button
                         onClick={() => handleUnderstand(item)}
                         disabled={processingId !== null}
                         className="flex-1 py-1 bg-sage border border-ink text-paper font-mono text-[10px] font-bold disabled:opacity-50"
                       >
-                        {processingId === item.id ? "THINKING..." : "🧠 UNDERSTAND"}
+                        {processingId === item.id ? "THINKING..." : item.status === "failed" ? "🔄 RE-TRY" : "🧠 UNDERSTAND"}
                       </button>
                     ) : (
                       <button
@@ -904,6 +950,15 @@ export default function InboxPage() {
           {applyError && (
             <div className="bg-terracottaLight border-2 border-terracotta p-3 font-mono text-xs text-terracottaDark">
               {applyError}
+            </div>
+          )}
+
+          {conflicts && (conflicts.courses.length > 0 || conflicts.sessions.length > 0 || conflicts.actions.length > 0) && (
+            <div className="bg-amber-50 border-2 border-amber-500 p-4 font-mono text-xs text-amber-800 space-y-1">
+              <h4 className="font-bold uppercase tracking-wider flex items-center gap-2">⚠️ Potential Conflicts Detected</h4>
+              {conflicts.courses.map((c, i) => <div key={i}>• {c.warning}</div>)}
+              {conflicts.sessions.map((s, i) => <div key={i}>• {s.warning}</div>)}
+              {conflicts.actions.map((a, i) => <div key={i}>• {a.warning}</div>)}
             </div>
           )}
           {applySuccess && (

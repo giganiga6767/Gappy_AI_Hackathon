@@ -242,9 +242,37 @@ export default function PlannerPage() {
     });
   };
 
-  const handleDeleteClick = (eventId: string) => {
-    if (confirm("Are you sure you want to delete/remove this event?")) {
-      deleteEventMutation.mutate({ eventId });
+  const handleDeleteClick = async (eventId: string) => {
+    if (!confirm("Are you sure you want to delete/remove this event?")) {
+      return;
+    }
+
+    let deleteSeries = false;
+    if (selectedEvent?.recurringGroupId) {
+      deleteSeries = confirm(
+        "This event is part of a recurring series.\n\n" +
+        "Do you want to delete the ENTIRE recurring series?\n" +
+        "Click OK to delete all occurrences, or Cancel to delete ONLY this single event."
+      );
+    }
+
+    try {
+      const url = `/api/events/${eventId}${deleteSeries ? "?series=true" : ""}`;
+      const res = await fetch(url, { method: "DELETE" });
+      if (res.ok) {
+        refetch();
+        setIsDetailOpen(false);
+        setSelectedEvent(null);
+      } else {
+        let errMsg = "Unknown error";
+        try {
+          const err = await res.json();
+          errMsg = err.message || err.error || errMsg;
+        } catch (e) {}
+        alert("Failed to delete event: " + errMsg);
+      }
+    } catch (err: any) {
+      alert("Failed to delete event: " + err.message);
     }
   };
 

@@ -128,6 +128,49 @@ router.get("/events/:eventId", async (req, res): Promise<void> => {
 
 router.patch("/events/:eventId", async (req, res): Promise<void> => {
   const { title, location, startTime, endTime } = req.body;
+  const { series } = req.query;
+  const eventId = req.params.eventId;
+
+  if (series === "true") {
+    const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, eventId)).limit(1);
+    if (event && event.recurringGroupId) {
+      if (startTime && endTime) {
+        const newStart = new Date(startTime);
+        const newEnd = new Date(endTime);
+        const seriesEvents = await db.select().from(eventsTable).where(eq(eventsTable.recurringGroupId, event.recurringGroupId));
+        for (const se of seriesEvents) {
+          const seStart = new Date(se.startTime);
+          const seEnd = new Date(se.endTime);
+          seStart.setHours(newStart.getHours(), newStart.getMinutes(), 0, 0);
+          seEnd.setHours(newEnd.getHours(), newEnd.getMinutes(), 0, 0);
+          await db.update(eventsTable)
+            .set({
+              ...(title && { title }),
+              ...(location !== undefined && { location }),
+              startTime: seStart,
+              endTime: seEnd,
+            })
+            .where(eq(eventsTable.id, se.id));
+        }
+        const updatedEvents = await db.select().from(eventsTable).where(eq(eventsTable.recurringGroupId, event.recurringGroupId));
+        const enriched = await Promise.all(updatedEvents.map(enrichEvent));
+        res.json(enriched[0]);
+        return;
+      } else {
+        const rows = await db.update(eventsTable)
+          .set({
+            ...(title && { title }),
+            ...(location !== undefined && { location }),
+          })
+          .where(eq(eventsTable.recurringGroupId, event.recurringGroupId))
+          .returning();
+        const enriched = await Promise.all(rows.map(enrichEvent));
+        res.json(enriched[0]);
+        return;
+      }
+    }
+  }
+
   const [row] = await db.update(eventsTable)
     .set({
       ...(title && { title }),
@@ -135,7 +178,7 @@ router.patch("/events/:eventId", async (req, res): Promise<void> => {
       ...(startTime && { startTime: new Date(startTime) }),
       ...(endTime && { endTime: new Date(endTime) }),
     })
-    .where(eq(eventsTable.id, req.params.eventId))
+    .where(eq(eventsTable.id, eventId))
     .returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   const enriched = await enrichEvent(row);
@@ -143,15 +186,44 @@ router.patch("/events/:eventId", async (req, res): Promise<void> => {
 });
 
 router.delete("/events/:eventId", async (req, res): Promise<void> => {
-  await db.delete(eventsTable).where(eq(eventsTable.id, req.params.eventId));
+  const { series } = req.query;
+  const eventId = req.params.eventId;
+
+  if (series === "true") {
+    const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, eventId)).limit(1);
+    if (event && event.recurringGroupId) {
+      await db.delete(eventsTable).where(eq(eventsTable.recurringGroupId, event.recurringGroupId));
+      res.status(204).end();
+      return;
+    }
+  }
+
+  await db.delete(eventsTable).where(eq(eventsTable.id, eventId));
   res.status(204).end();
 });
 
 router.post("/events/:eventId/cancel", async (req, res): Promise<void> => {
   const { cancellationNote } = req.body;
+  const { series } = req.query;
+  const eventId = req.params.eventId;
+
+  if (series === "true") {
+    const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, eventId)).limit(1);
+    if (event && event.recurringGroupId) {
+      const rows = await db.update(eventsTable)
+        .set({ isCancelled: true, ...(cancellationNote && { cancellationNote }) })
+        .where(eq(eventsTable.recurringGroupId, event.recurringGroupId))
+        .returning();
+      if (!rows.length) { res.status(404).json({ error: "Not found" }); return; }
+      const enriched = await Promise.all(rows.map(enrichEvent));
+      res.json(enriched[0]);
+      return;
+    }
+  }
+
   const [row] = await db.update(eventsTable)
     .set({ isCancelled: true, ...(cancellationNote && { cancellationNote }) })
-    .where(eq(eventsTable.id, req.params.eventId))
+    .where(eq(eventsTable.id, eventId))
     .returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   const enriched = await enrichEvent(row);
