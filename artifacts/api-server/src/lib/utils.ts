@@ -22,6 +22,19 @@ export function sanitizeApiKey(key: string | undefined): string | undefined {
   ) {
     return undefined;
   }
+
+  // Enforce prefix rules for Google and Antigravity keys
+  if (!cleaned.startsWith("AIzaSy") && !cleaned.startsWith("AQ.")) {
+    return undefined;
+  }
+
+  // Blacklist known fake / template keys
+  if (
+    cleaned === "AIzaSyAY1zuDsFw3SKZvFg6JuVc3byzb9zCkwBQ" ||
+    lower.includes("fakekey")
+  ) {
+    return undefined;
+  }
   
   return cleaned;
 }
@@ -32,14 +45,17 @@ export function sanitizeApiKey(key: string | undefined): string | undefined {
  */
 export function resolveGeminiApiKey(clientKey?: string): string | undefined {
   const sanitizedClient = sanitizeApiKey(clientKey);
+  console.log(`[resolveGeminiApiKey] Client key: "${clientKey}" -> Sanitized: "${sanitizedClient}"`);
+  
   if (sanitizedClient) {
     return sanitizedClient;
   }
 
-  // Fallback to environment variables, sanitizing them as well
-  return (
+  const envKey =
     sanitizeApiKey(process.env.GEMINI_API_KEY) ||
     sanitizeApiKey(process.env.GOOGLE_API_KEY) ||
-    sanitizeApiKey(process.env.ANTIGRAVITY_API_KEY)
-  );
+    sanitizeApiKey(process.env.ANTIGRAVITY_API_KEY);
+
+  console.log(`[resolveGeminiApiKey] Falling back to env key. Resolved: "${envKey ? envKey.substring(0, 5) + '...' + envKey.length : 'undefined'}"`);
+  return envKey;
 }
