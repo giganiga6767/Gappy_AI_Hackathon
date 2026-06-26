@@ -7,7 +7,7 @@ import path from "path";
 import { exec } from "child_process";
 
 const router = Router();
-const WORKSPACE_DIR = "/home/niranjan/Desktop/Gappy_AI_Hackathon";
+const WORKSPACE_DIR = process.env.NEXUSDESK_ROOT || path.resolve(process.cwd(), "../..");
 const RECORDINGS_DIR = path.join(WORKSPACE_DIR, "recordings");
 
 // Ensure recordings directory exists

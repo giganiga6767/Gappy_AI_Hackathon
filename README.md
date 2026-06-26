@@ -653,4 +653,44 @@ This regenerates `lib/api-client-react/src/generated/` and `lib/api-zod/src/gene
 
 ---
 
+## 15. Implementation Status
+
+### ✅ Implemented
+
+| Feature | Status | Notes |
+|---|---|---|
+| **Database Foundation** | ✅ Complete | Drizzle ORM + libsql/SQLite, portable `NEXUSDESK_DB_URL`, schema indexes on courseId, status, date |
+| **Semester Management** | ✅ Complete | Full CRUD — `GET/POST/PATCH/DELETE /api/semesters` |
+| **Course Management** | ✅ Complete | Full CRUD, real-time attendance stats (`effectivePct`, `canSkip`, `mustAttend`) |
+| **Event / Schedule** | ✅ Complete | Recurring event generation, cancel endpoint, enriched with courseShortName + attendance |
+| **Attendance Tracking** | ✅ Complete | Mark present/absent per event, per-course aggregates, at-risk detection |
+| **Task Kanban** | ✅ Complete | TODO / IN_PROGRESS / DONE lanes, priority levels, category filter, inline create |
+| **CGPA Simulator** | ✅ Complete | Historical semester records, SGPA-weighted CGPA projection tool |
+| **Inbox Pipeline** | ✅ Complete | Capture → Understand (Gemini/Ollama) → Structured Preview & Edit → Apply |
+| **Inbox UX** | ✅ Complete | Structured form preview (not raw JSON), editable courses/sessions/actions |
+| **Export** | ✅ Complete | ZIP export of all data, ICS calendar |
+| **Dashboard / Today** | ✅ Complete | Current session, upcoming events, attendance health, pending actions |
+| **Planner / Calendar** | ✅ Complete | Weekly/monthly view, exam timeline, session cancellations |
+| **Course Detail** | ✅ Complete | Grade ledger, attendance gauge, session list |
+| **Demo Mode** | ✅ Complete | `POST /api/demo/seed` seeds 5 courses, 290+ events, 250+ attendance records, 8 tasks, CGPA history |
+| **Hardcoded Path Fix** | ✅ Complete | All `/home/niranjan/...` paths replaced with `process.env.NEXUSDESK_ROOT` fallback |
+| **DB Indexes** | ✅ Complete | Indexes on `courseId`, `startTime`, `status`, `category`, `dueDate`, `recurringGroupId` |
+
+### 📋 Planned
+
+| Feature | Priority | Notes |
+|---|---|---|
+| **Projects Page** | Medium | Milestones, team members, linked tasks — backend ready, frontend stub present |
+| **Resources Page** | Medium | File library linked to courses — backend ready, frontend stub present |
+| **Class Notes (Audio)** | Medium | Record audio in-session, auto-transcribe + summarize via Whisper/Gemini |
+| **Artifacts Viewer** | Low | Browse all ingested notes, PDFs, transcripts |
+| **ICS Calendar Sync** | Medium | Export full semester schedule as `.ics` for import into Google Calendar |
+| **Offline PWA** | Low | Service worker for full offline operation |
+| **Bulk Attendance Mark** | Low | Mark entire week as present/absent in one click |
+| **Push Notifications** | Low | Browser notifications for upcoming sessions |
+| **Python Whisper Integration** | Medium | Local audio transcription without Gemini API key |
+| **Multi-semester View** | Low | Cross-semester CGPA graph, grade history |
+
+---
+
 *NexusDesk is intentionally self-contained. If you can run `bash setup.sh && bash launch.sh`, you have a fully functional academic OS. No accounts, no subscriptions, no internet required.*

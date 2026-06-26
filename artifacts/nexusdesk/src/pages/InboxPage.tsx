@@ -11,26 +11,428 @@ interface InboxItem {
   createdAt: string;
 }
 
+interface ExtractedSemester {
+  name: string;
+  startDate: string;
+  endDate: string;
+}
+
+interface ExtractedCourse {
+  subjectCode: string;
+  name: string;
+  shortName: string;
+  creditWeight: number;
+  facultyName?: string;
+  roomNumber?: string;
+}
+
+interface ExtractedSession {
+  subjectCode?: string;
+  title: string;
+  type: string;
+  date?: string;
+  dayOfWeek?: number;
+  startHour: number;
+  startMinute: number;
+  endHour: number;
+  endMinute: number;
+  location?: string;
+}
+
+interface ExtractedAction {
+  title: string;
+  description?: string;
+  category: string;
+  priority: string;
+  dueDate?: string;
+  subjectCode?: string;
+}
+
+interface ExtractedPayload {
+  semester?: ExtractedSemester;
+  courses: ExtractedCourse[];
+  sessions: ExtractedSession[];
+  artifacts: any[];
+  actions: ExtractedAction[];
+}
+
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const EVENT_TYPES = ["LECTURE", "LAB", "TUTORIAL", "EXAM", "SEMINAR", "BREAK", "OTHER"];
+const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+const CATEGORIES = ["ACADEMICS", "PERSONAL", "PROJECT", "ADMIN"];
+
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function StructuredPreview({
+  payload,
+  onChange,
+  onApply,
+  applying,
+}: {
+  payload: ExtractedPayload;
+  onChange: (p: ExtractedPayload) => void;
+  onApply: () => void;
+  applying: boolean;
+}) {
+  const update = (patch: Partial<ExtractedPayload>) => onChange({ ...payload, ...patch });
+
+  return (
+    <div className="space-y-5">
+      {/* Semester */}
+      {payload.semester && (
+        <section>
+          <div className="font-mono text-[10px] font-bold text-inkLight uppercase tracking-wider border-b border-ink pb-1 mb-3">
+            SEMESTER
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div>
+              <label className="font-mono text-[9px] font-bold block mb-1">NAME</label>
+              <input
+                type="text"
+                value={payload.semester.name}
+                onChange={(e) =>
+                  update({ semester: { ...payload.semester!, name: e.target.value } })
+                }
+                className="w-full border-2 border-ink bg-paper p-1.5 font-mono text-xs focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="font-mono text-[9px] font-bold block mb-1">START DATE</label>
+              <input
+                type="date"
+                value={payload.semester.startDate}
+                onChange={(e) =>
+                  update({ semester: { ...payload.semester!, startDate: e.target.value } })
+                }
+                className="w-full border-2 border-ink bg-paper p-1.5 font-mono text-xs focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="font-mono text-[9px] font-bold block mb-1">END DATE</label>
+              <input
+                type="date"
+                value={payload.semester.endDate}
+                onChange={(e) =>
+                  update({ semester: { ...payload.semester!, endDate: e.target.value } })
+                }
+                className="w-full border-2 border-ink bg-paper p-1.5 font-mono text-xs focus:outline-none"
+              />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Courses */}
+      {payload.courses.length > 0 && (
+        <section>
+          <div className="font-mono text-[10px] font-bold text-inkLight uppercase tracking-wider border-b border-ink pb-1 mb-3">
+            COURSES ({payload.courses.length})
+          </div>
+          <div className="space-y-2">
+            {payload.courses.map((c, i) => (
+              <div key={i} className="border-2 border-ink bg-paper p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 relative">
+                <button
+                  onClick={() => update({ courses: payload.courses.filter((_, j) => j !== i) })}
+                  className="absolute top-1 right-1 font-mono text-[10px] font-bold text-terracotta hover:bg-terracottaLight px-1"
+                >
+                  ✕
+                </button>
+                <div>
+                  <label className="font-mono text-[9px] font-bold block mb-1">CODE</label>
+                  <input
+                    type="text"
+                    value={c.subjectCode}
+                    onChange={(e) => {
+                      const courses = [...payload.courses];
+                      courses[i] = { ...c, subjectCode: e.target.value };
+                      update({ courses });
+                    }}
+                    className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="font-mono text-[9px] font-bold block mb-1">COURSE NAME</label>
+                  <input
+                    type="text"
+                    value={c.name}
+                    onChange={(e) => {
+                      const courses = [...payload.courses];
+                      courses[i] = { ...c, name: e.target.value };
+                      update({ courses });
+                    }}
+                    className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-mono text-[9px] font-bold block mb-1">CREDITS</label>
+                  <input
+                    type="number"
+                    value={c.creditWeight}
+                    onChange={(e) => {
+                      const courses = [...payload.courses];
+                      courses[i] = { ...c, creditWeight: Number(e.target.value) };
+                      update({ courses });
+                    }}
+                    className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                  />
+                </div>
+                {c.facultyName !== undefined && (
+                  <div>
+                    <label className="font-mono text-[9px] font-bold block mb-1">FACULTY</label>
+                    <input
+                      type="text"
+                      value={c.facultyName || ""}
+                      onChange={(e) => {
+                        const courses = [...payload.courses];
+                        courses[i] = { ...c, facultyName: e.target.value };
+                        update({ courses });
+                      }}
+                      className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                    />
+                  </div>
+                )}
+                {c.roomNumber !== undefined && (
+                  <div>
+                    <label className="font-mono text-[9px] font-bold block mb-1">ROOM</label>
+                    <input
+                      type="text"
+                      value={c.roomNumber || ""}
+                      onChange={(e) => {
+                        const courses = [...payload.courses];
+                        courses[i] = { ...c, roomNumber: e.target.value };
+                        update({ courses });
+                      }}
+                      className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Sessions */}
+      {payload.sessions.length > 0 && (
+        <section>
+          <div className="font-mono text-[10px] font-bold text-inkLight uppercase tracking-wider border-b border-ink pb-1 mb-3">
+            SESSIONS ({payload.sessions.length})
+          </div>
+          <div className="space-y-2">
+            {payload.sessions.map((s, i) => (
+              <div key={i} className="border-2 border-ink bg-paper p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 relative">
+                <button
+                  onClick={() => update({ sessions: payload.sessions.filter((_, j) => j !== i) })}
+                  className="absolute top-1 right-1 font-mono text-[10px] font-bold text-terracotta hover:bg-terracottaLight px-1"
+                >
+                  ✕
+                </button>
+                <div className="sm:col-span-2">
+                  <label className="font-mono text-[9px] font-bold block mb-1">TITLE</label>
+                  <input
+                    type="text"
+                    value={s.title}
+                    onChange={(e) => {
+                      const sessions = [...payload.sessions];
+                      sessions[i] = { ...s, title: e.target.value };
+                      update({ sessions });
+                    }}
+                    className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-mono text-[9px] font-bold block mb-1">TYPE</label>
+                  <select
+                    value={s.type}
+                    onChange={(e) => {
+                      const sessions = [...payload.sessions];
+                      sessions[i] = { ...s, type: e.target.value };
+                      update({ sessions });
+                    }}
+                    className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                  >
+                    {EVENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-mono text-[9px] font-bold block mb-1">CODE</label>
+                  <input
+                    type="text"
+                    value={s.subjectCode || ""}
+                    onChange={(e) => {
+                      const sessions = [...payload.sessions];
+                      sessions[i] = { ...s, subjectCode: e.target.value };
+                      update({ sessions });
+                    }}
+                    className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                  />
+                </div>
+                {s.dayOfWeek !== undefined ? (
+                  <div>
+                    <label className="font-mono text-[9px] font-bold block mb-1">DAY (RECURRING)</label>
+                    <select
+                      value={s.dayOfWeek}
+                      onChange={(e) => {
+                        const sessions = [...payload.sessions];
+                        sessions[i] = { ...s, dayOfWeek: Number(e.target.value) };
+                        update({ sessions });
+                      }}
+                      className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                    >
+                      {DAY_NAMES.map((d, idx) => <option key={idx} value={idx}>{d}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="font-mono text-[9px] font-bold block mb-1">DATE</label>
+                    <input
+                      type="date"
+                      value={s.date || ""}
+                      onChange={(e) => {
+                        const sessions = [...payload.sessions];
+                        sessions[i] = { ...s, date: e.target.value };
+                        update({ sessions });
+                      }}
+                      className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="font-mono text-[9px] font-bold block mb-1">START TIME</label>
+                  <input
+                    type="time"
+                    value={`${pad(s.startHour)}:${pad(s.startMinute)}`}
+                    onChange={(e) => {
+                      const [h, m] = e.target.value.split(":").map(Number);
+                      const sessions = [...payload.sessions];
+                      sessions[i] = { ...s, startHour: h, startMinute: m };
+                      update({ sessions });
+                    }}
+                    className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-mono text-[9px] font-bold block mb-1">END TIME</label>
+                  <input
+                    type="time"
+                    value={`${pad(s.endHour)}:${pad(s.endMinute)}`}
+                    onChange={(e) => {
+                      const [h, m] = e.target.value.split(":").map(Number);
+                      const sessions = [...payload.sessions];
+                      sessions[i] = { ...s, endHour: h, endMinute: m };
+                      update({ sessions });
+                    }}
+                    className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Actions */}
+      {payload.actions.length > 0 && (
+        <section>
+          <div className="font-mono text-[10px] font-bold text-inkLight uppercase tracking-wider border-b border-ink pb-1 mb-3">
+            ACTIONS / TASKS ({payload.actions.length})
+          </div>
+          <div className="space-y-2">
+            {payload.actions.map((a, i) => (
+              <div key={i} className="border-2 border-ink bg-paper p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 relative">
+                <button
+                  onClick={() => update({ actions: payload.actions.filter((_, j) => j !== i) })}
+                  className="absolute top-1 right-1 font-mono text-[10px] font-bold text-terracotta hover:bg-terracottaLight px-1"
+                >
+                  ✕
+                </button>
+                <div className="sm:col-span-2">
+                  <label className="font-mono text-[9px] font-bold block mb-1">TITLE</label>
+                  <input
+                    type="text"
+                    value={a.title}
+                    onChange={(e) => {
+                      const actions = [...payload.actions];
+                      actions[i] = { ...a, title: e.target.value };
+                      update({ actions });
+                    }}
+                    className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-mono text-[9px] font-bold block mb-1">PRIORITY</label>
+                  <select
+                    value={a.priority}
+                    onChange={(e) => {
+                      const actions = [...payload.actions];
+                      actions[i] = { ...a, priority: e.target.value };
+                      update({ actions });
+                    }}
+                    className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                  >
+                    {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-mono text-[9px] font-bold block mb-1">DUE DATE</label>
+                  <input
+                    type="date"
+                    value={a.dueDate || ""}
+                    onChange={(e) => {
+                      const actions = [...payload.actions];
+                      actions[i] = { ...a, dueDate: e.target.value };
+                      update({ actions });
+                    }}
+                    className="w-full border border-ink bg-paper p-1 font-mono text-xs focus:outline-none"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Empty state */}
+      {!payload.semester && payload.courses.length === 0 && payload.sessions.length === 0 && payload.actions.length === 0 && (
+        <p className="text-sm text-inkLight font-mono text-center py-4">
+          Nothing was extracted. Try running Understand again, or edit the raw text and retry.
+        </p>
+      )}
+
+      <button
+        onClick={onApply}
+        disabled={applying}
+        className="w-full py-2.5 bg-sage border-2 border-ink text-paper font-mono text-xs font-bold shadow-brutal active:shadow-none active:translate-x-[2px] active:translate-y-[2px] disabled:opacity-50"
+      >
+        {applying ? "APPLYING..." : "✅ APPLY TO DATABASE"}
+      </button>
+    </div>
+  );
+}
+
 export default function InboxPage() {
   const [items, setItems] = useState<InboxItem[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Capture form states
+
   const [title, setTitle] = useState("");
   const [textInput, setTextInput] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [captureType, setCaptureType] = useState<"text" | "file" | "record">("text");
 
-  // Audio recording states
   const [isRecording, setIsRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  // Processing states
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editText, setEditText] = useState("");
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [previewPayload, setPreviewPayload] = useState<ExtractedPayload | null>(null);
+  const [applying, setApplying] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null);
+  const [applySuccess, setApplySuccess] = useState<string | null>(null);
+
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("gemini_api_key") || "");
   const [provider, setProvider] = useState(() => localStorage.getItem("llm_provider") || "gemini");
 
@@ -41,129 +443,110 @@ export default function InboxPage() {
   const fetchItems = async () => {
     try {
       const res = await fetch("/api/inbox");
-      if (res.ok) {
-        const data = await res.json();
-        setItems(data);
-      }
+      if (res.ok) setItems(await res.json());
     } catch (e) {
-      console.error("Failed to load inbox items:", e);
+      console.error("Failed to load inbox:", e);
     } finally {
       setLoading(false);
     }
   };
 
-  // Convert blob to base64
-  const blobToBase64 = (blob: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
+  const blobToBase64 = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = (reader.result as string).split(",")[1];
-        resolve(base64String);
-      };
+      reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
-  };
 
-  // Recording audio
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+      const mr = new MediaRecorder(stream);
+      mediaRecorderRef.current = mr;
+      mr.ondataavailable = (ev) => { if (ev.data.size > 0) audioChunksRef.current.push(ev.data); };
+      mr.onstop = () => {
+        setRecordedBlob(new Blob(audioChunksRef.current, { type: "audio/webm" }));
+        stream.getTracks().forEach((t) => t.stop());
       };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        setRecordedBlob(blob);
-        stream.getTracks().forEach(t => t.stop());
-      };
-
-      mediaRecorder.start();
+      mr.start();
       setIsRecording(true);
       setRecordedBlob(null);
-    } catch (err) {
+    } catch {
       alert("Microphone permission denied or unavailable.");
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
   };
 
-  // Handle Capture Submit
   const handleCapture = async (e: React.FormEvent) => {
     e.preventDefault();
-    let bodyPayload: any = {
+    const body: any = {
       title: title || `Capture ${new Date().toLocaleString()}`,
-      type: captureType === "record" ? "audio" : captureType
+      type: captureType === "record" ? "audio" : captureType,
     };
 
-    try {
-      if (captureType === "text") {
-        if (!textInput.trim()) return;
-        bodyPayload.rawText = textInput;
-      } else if (captureType === "file" && selectedFile) {
-        const base64 = await blobToBase64(selectedFile);
-        bodyPayload.fileBase64 = base64;
-        bodyPayload.fileName = selectedFile.name;
-        bodyPayload.type = selectedFile.type.startsWith("image/") ? "image" : selectedFile.type === "application/pdf" ? "pdf" : "audio";
-      } else if (captureType === "record" && recordedBlob) {
-        const base64 = await blobToBase64(recordedBlob);
-        bodyPayload.fileBase64 = base64;
-        bodyPayload.fileName = "voice_capture.webm";
-      } else {
-        return;
-      }
+    if (captureType === "text") {
+      if (!textInput.trim()) return;
+      body.rawText = textInput;
+    } else if (captureType === "file" && selectedFile) {
+      body.fileBase64 = await blobToBase64(selectedFile);
+      body.fileName = selectedFile.name;
+      body.type = selectedFile.type.startsWith("image/") ? "image" : selectedFile.type === "application/pdf" ? "pdf" : "audio";
+    } else if (captureType === "record" && recordedBlob) {
+      body.fileBase64 = await blobToBase64(recordedBlob);
+      body.fileName = "voice_capture.webm";
+    } else {
+      return;
+    }
 
-      const res = await fetch("/api/inbox/capture", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bodyPayload)
-      });
+    const res = await fetch("/api/inbox/capture", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
 
-      if (res.ok) {
-        setTitle("");
-        setTextInput("");
-        setSelectedFile(null);
-        setRecordedBlob(null);
-        fetchItems();
-      } else {
-        alert("Failed to capture inbox item.");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Error occurred during capture.");
+    if (res.ok) {
+      setTitle("");
+      setTextInput("");
+      setSelectedFile(null);
+      setRecordedBlob(null);
+      fetchItems();
+    } else {
+      alert("Failed to capture item.");
     }
   };
 
-  // Run Lemma Understanding
   const handleUnderstand = async (item: InboxItem) => {
     setProcessingId(item.id);
+    setPreviewId(null);
+    setApplyError(null);
+    setApplySuccess(null);
     try {
       const res = await fetch(`/api/inbox/${item.id}/understand`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, apiKey })
+        body: JSON.stringify({ provider, apiKey }),
       });
-
       if (res.ok) {
         const data = await res.json();
-        setEditText(JSON.stringify(data.analysis, null, 2));
-        setEditingId(item.id);
+        const parsed: ExtractedPayload = {
+          semester: data.analysis?.semester,
+          courses: data.analysis?.courses || [],
+          sessions: data.analysis?.sessions || [],
+          artifacts: data.analysis?.artifacts || [],
+          actions: data.analysis?.actions || [],
+        };
+        setPreviewPayload(parsed);
+        setPreviewId(item.id);
         fetchItems();
       } else {
-        const errData = await res.json();
-        alert(`Failed to understand: ${errData.error || "Unknown error"}`);
+        const err = await res.json();
+        alert(`Failed: ${err.error || "Unknown error"}`);
       }
     } catch (e) {
       console.error(e);
@@ -173,49 +556,57 @@ export default function InboxPage() {
     }
   };
 
-  // Save Settings
-  const saveSettings = (key: string, val: string) => {
-    localStorage.setItem(key, val);
-    if (key === "gemini_api_key") setApiKey(val);
-    if (key === "llm_provider") setProvider(val);
-  };
-
-  // Apply Changes
-  const handleApply = async (id: string) => {
+  const openPreview = (item: InboxItem) => {
     try {
-      const payload = JSON.parse(editText);
-      const res = await fetch(`/api/inbox/${id}/apply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+      const parsed = JSON.parse(item.analysis || "{}");
+      setPreviewPayload({
+        semester: parsed.semester,
+        courses: parsed.courses || [],
+        sessions: parsed.sessions || [],
+        artifacts: parsed.artifacts || [],
+        actions: parsed.actions || [],
       });
-
-      if (res.ok) {
-        setEditingId(null);
-        setEditText("");
-        fetchItems();
-      } else {
-        alert("Failed to apply payload.");
-      }
-    } catch (err) {
-      alert("Invalid JSON format. Please verify before applying.");
+      setPreviewId(item.id);
+      setApplyError(null);
+      setApplySuccess(null);
+    } catch {
+      alert("Cannot parse stored analysis. Try Understand again.");
     }
   };
 
-  // Delete Item
+  const handleApply = async () => {
+    if (!previewId || !previewPayload) return;
+    setApplying(true);
+    setApplyError(null);
+    setApplySuccess(null);
+    try {
+      const res = await fetch(`/api/inbox/${previewId}/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(previewPayload),
+      });
+      if (res.ok) {
+        setApplySuccess("✅ Applied successfully! Data committed to database.");
+        setPreviewId(null);
+        setPreviewPayload(null);
+        fetchItems();
+      } else {
+        const err = await res.json();
+        setApplyError(`Failed: ${err.error || "Unknown error"}`);
+      }
+    } catch {
+      setApplyError("Network error during apply.");
+    } finally {
+      setApplying(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm("Remove this item from the inbox?")) return;
-    try {
-      const res = await fetch(`/api/inbox/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        if (editingId === id) {
-          setEditingId(null);
-          setEditText("");
-        }
-        fetchItems();
-      }
-    } catch (e) {
-      console.error(e);
+    const res = await fetch(`/api/inbox/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      if (previewId === id) { setPreviewId(null); setPreviewPayload(null); }
+      fetchItems();
     }
   };
 
@@ -225,190 +616,167 @@ export default function InboxPage() {
       <div className="flex items-end justify-between border-b-2 border-ink pb-2">
         <div>
           <h1 className="text-lg font-mono font-bold tracking-tighter text-ink uppercase">Inbox</h1>
-          <p className="font-mono text-xs text-inkLight mt-0.5">Capture. Understand. Preview. Apply.</p>
+          <p className="font-mono text-xs text-inkLight mt-0.5">Capture → Understand → Preview → Apply</p>
         </div>
         <span className="font-mono text-xs text-inkLight">NEXUSDESK // INGEST_PIPELINE</span>
       </div>
 
-      {/* Settings Row */}
+      {/* LLM Settings */}
       <div className="bg-surface border-2 border-ink p-3 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
         <div>
-          <label className="font-bold block mb-1">COGNITIVE PROVIDER</label>
-          <select 
-            value={provider} 
-            onChange={(e) => saveSettings("llm_provider", e.target.value)}
-            className="border-2 border-ink p-1 w-full bg-paper focus:ring-0 rounded-none text-xs"
+          <label className="font-bold block mb-1">AI PROVIDER</label>
+          <select
+            value={provider}
+            onChange={(e) => { setProvider(e.target.value); localStorage.setItem("llm_provider", e.target.value); }}
+            className="border-2 border-ink p-1 w-full bg-paper focus:outline-none text-xs"
           >
-            <option value="gemini">Gemini API (Cloud/Optimal)</option>
-            <option value="ollama">Ollama (Local/Private)</option>
+            <option value="gemini">Gemini (Cloud — needs API key)</option>
+            <option value="ollama">Ollama (Local — no API key)</option>
           </select>
         </div>
         <div>
           <label className="font-bold block mb-1">GEMINI API KEY</label>
-          <input 
-            type="password" 
-            placeholder="Enter key to enable cloud flash extraction..."
-            value={apiKey} 
-            onChange={(e) => saveSettings("gemini_api_key", e.target.value)}
-            className="border-2 border-ink p-1 w-full bg-paper focus:ring-0 rounded-none text-xs"
+          <input
+            type="password"
+            placeholder="Paste key for cloud extraction..."
+            value={apiKey}
+            onChange={(e) => { setApiKey(e.target.value); localStorage.setItem("gemini_api_key", e.target.value); }}
+            className="border-2 border-ink p-1 w-full bg-paper focus:outline-none text-xs"
           />
         </div>
       </div>
 
-      {/* Grid: Capture and List */}
+      {/* Grid: Capture + Queue */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Ingestion Panel */}
+        {/* Capture Panel */}
         <div className="bg-surface border-2 border-ink p-4 space-y-4">
           <span className="font-mono text-xs font-bold text-inkLight block uppercase tracking-wider">CAPTURE INPUT</span>
-          
-          {/* Tab selectors */}
+
           <div className="flex border-b-2 border-ink">
-            <button 
-              onClick={() => setCaptureType("text")}
-              className={`flex-1 text-center py-1.5 font-mono text-xs font-bold border-r-2 last:border-r-0 border-ink ${
-                captureType === "text" ? "bg-ink text-paper" : "hover:bg-surfaceHover"
-              }`}
-            >
-              TEXT PASTE
-            </button>
-            <button 
-              onClick={() => setCaptureType("file")}
-              className={`flex-1 text-center py-1.5 font-mono text-xs font-bold border-r-2 last:border-r-0 border-ink ${
-                captureType === "file" ? "bg-ink text-paper" : "hover:bg-surfaceHover"
-              }`}
-            >
-              IMPORT FILE
-            </button>
-            <button 
-              onClick={() => setCaptureType("record")}
-              className={`flex-1 text-center py-1.5 font-mono text-xs font-bold border-r-2 last:border-r-0 border-ink ${
-                captureType === "record" ? "bg-ink text-paper" : "hover:bg-surfaceHover"
-              }`}
-            >
-              RECORD MIC
-            </button>
+            {(["text", "file", "record"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setCaptureType(t)}
+                className={`flex-1 py-1.5 font-mono text-xs font-bold border-r-2 last:border-r-0 border-ink ${
+                  captureType === t ? "bg-ink text-paper" : "hover:bg-surfaceHover"
+                }`}
+              >
+                {t === "text" ? "TEXT" : t === "file" ? "FILE" : "RECORD"}
+              </button>
+            ))}
           </div>
 
-          <form onSubmit={handleCapture} className="space-y-4">
-            <div className="space-y-1">
-              <label className="font-mono text-xs font-bold block">TITLE / DESCRIPTION</label>
-              <input 
-                type="text" 
-                placeholder="e.g. ECE Lecture 3, Syllabus Copy" 
-                value={title} 
+          <form onSubmit={handleCapture} className="space-y-3">
+            <div>
+              <label className="font-mono text-[10px] font-bold block mb-1">TITLE</label>
+              <input
+                type="text"
+                placeholder="e.g. CS301 Syllabus, Lecture 4"
+                value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="border-2 border-ink p-2 w-full bg-paper text-sm focus:ring-0 rounded-none"
+                className="border-2 border-ink p-2 w-full bg-paper text-sm focus:outline-none"
               />
             </div>
 
             {captureType === "text" && (
-              <div className="space-y-1">
-                <label className="font-mono text-xs font-bold block">PASTE TEXT / TIMETABLE / SYLLABUS</label>
-                <textarea 
+              <div>
+                <label className="font-mono text-[10px] font-bold block mb-1">PASTE TEXT</label>
+                <textarea
                   rows={6}
-                  placeholder="Paste unstructured notes, class schedules, reschedule requests here..."
+                  placeholder="Paste timetable, syllabus, class notes, or reschedule message..."
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
-                  className="border-2 border-ink p-2 w-full bg-paper text-sm focus:ring-0 rounded-none"
+                  className="border-2 border-ink p-2 w-full bg-paper text-sm focus:outline-none"
                 />
               </div>
             )}
 
             {captureType === "file" && (
-              <div className="space-y-1">
-                <label className="font-mono text-xs font-bold block">SELECT FILE (PDF, PNG, JPG, MP3)</label>
-                <input 
-                  type="file" 
+              <div>
+                <label className="font-mono text-[10px] font-bold block mb-1">SELECT FILE</label>
+                <input
+                  type="file"
                   accept="image/*,application/pdf,audio/*"
                   onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                  className="border-2 border-ink p-2 w-full bg-paper text-xs focus:ring-0 rounded-none file:mr-4 file:py-1 file:px-2 file:border-2 file:border-ink file:bg-surface file:text-xs file:font-mono file:font-bold"
+                  className="border-2 border-ink p-2 w-full bg-paper text-xs focus:outline-none file:mr-3 file:py-1 file:px-2 file:border-2 file:border-ink file:bg-surface file:text-xs file:font-mono file:font-bold"
                 />
               </div>
             )}
 
             {captureType === "record" && (
-              <div className="p-4 border-2 border-ink bg-paper flex flex-col items-center space-y-4 justify-center">
+              <div className="p-4 border-2 border-ink bg-paper flex flex-col items-center gap-4">
                 <div className="flex items-center gap-4">
                   {isRecording ? (
-                    <button 
-                      type="button" 
-                      onClick={stopRecording}
-                      className="w-12 h-12 rounded-full border-2 border-ink bg-terracotta hover:opacity-90 flex items-center justify-center font-mono font-bold text-xs text-paper"
-                    >
+                    <button type="button" onClick={stopRecording}
+                      className="w-12 h-12 border-2 border-ink bg-terracotta text-paper font-mono text-xs font-bold flex items-center justify-center">
                       STOP
                     </button>
                   ) : (
-                    <button 
-                      type="button" 
-                      onClick={startRecording}
-                      className="w-12 h-12 rounded-full border-2 border-ink bg-sage hover:opacity-90 flex items-center justify-center font-mono font-bold text-xs text-paper"
-                    >
+                    <button type="button" onClick={startRecording}
+                      className="w-12 h-12 border-2 border-ink bg-sage text-paper font-mono text-xs font-bold flex items-center justify-center">
                       REC
                     </button>
                   )}
                   <span className="font-mono text-xs font-bold">
-                    {isRecording ? "🔴 RECORDING LIVE..." : recordedBlob ? "🎙️ RECORDING CAPTURED!" : "READY TO RECORD"}
+                    {isRecording ? "🔴 RECORDING..." : recordedBlob ? "🎙️ CAPTURED" : "READY"}
                   </span>
                 </div>
               </div>
             )}
 
-            <button 
-              type="submit" 
-              className="w-full py-2 bg-ink text-paper font-mono text-xs font-bold border-2 border-ink active:translate-x-[1px] active:translate-y-[1px]"
-            >
+            <button type="submit"
+              className="w-full py-2 bg-ink text-paper font-mono text-xs font-bold border-2 border-ink active:translate-x-[1px] active:translate-y-[1px]">
               📥 CAPTURE INTO INBOX
             </button>
           </form>
         </div>
 
-        {/* Queued Items List */}
-        <div className="bg-surface border-2 border-ink p-4 space-y-4">
+        {/* Queue Panel */}
+        <div className="bg-surface border-2 border-ink p-4 space-y-3">
           <span className="font-mono text-xs font-bold text-inkLight block uppercase tracking-wider">QUEUED CAPTURES</span>
-          
           {loading ? (
             <p className="text-xs font-mono text-inkLight">Loading...</p>
           ) : items.length === 0 ? (
-            <p className="text-xs text-inkLight">No unprocessed captures. Desk clear.</p>
+            <p className="text-xs text-inkLight font-mono">No captures pending. Desk clear.</p>
           ) : (
-            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
-              {items.map(item => (
-                <div key={item.id} className="border-2 border-ink p-3 bg-paper space-y-2 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <h4 className="font-bold text-sm truncate pr-2 text-ink">{item.title}</h4>
-                      <span className="font-mono text-[10px] bg-surface border border-ink px-1.5 uppercase font-bold">
-                        {item.type}
+            <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+              {items.map((item) => (
+                <div key={item.id} className="border-2 border-ink p-3 bg-paper space-y-2">
+                  <div className="flex justify-between items-start">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-sm truncate text-ink">{item.title}</h4>
+                      <span className="font-mono text-[10px] text-inkLight">
+                        {item.type.toUpperCase()} // {new Date(item.createdAt).toLocaleDateString()}
                       </span>
                     </div>
-                    <span className="font-mono text-[9px] text-inkLight block">
-                      Captured: {new Date(item.createdAt).toLocaleDateString()}
+                    <span className={`font-mono text-[9px] font-bold px-1.5 py-0.5 border border-ink ml-2 flex-shrink-0 uppercase ${
+                      item.status === "applied" ? "bg-sageLight text-sageDark" :
+                      item.status === "understood" ? "bg-amberLight text-amber" :
+                      "bg-surface text-inkLight"
+                    }`}>
+                      {item.status}
                     </span>
                   </div>
-
-                  <div className="flex gap-2 pt-1.5 border-t border-dashed border-inkFaint">
+                  <div className="flex gap-2 pt-1 border-t border-dashed border-inkFaint">
                     {item.status === "captured" ? (
-                      <button 
+                      <button
                         onClick={() => handleUnderstand(item)}
                         disabled={processingId !== null}
-                        className="flex-1 py-1 bg-sage border border-ink text-paper font-mono text-[10px] font-bold"
+                        className="flex-1 py-1 bg-sage border border-ink text-paper font-mono text-[10px] font-bold disabled:opacity-50"
                       >
-                        {processingId === item.id ? "UNDERSTANDING..." : "🧠 UNDERSTAND"}
+                        {processingId === item.id ? "THINKING..." : "🧠 UNDERSTAND"}
                       </button>
                     ) : (
-                      <button 
-                        onClick={() => {
-                          setEditText(JSON.stringify(JSON.parse(item.analysis || "{}"), null, 2));
-                          setEditingId(item.id);
-                        }}
-                        className="flex-1 py-1 bg-paper border border-ink text-ink font-mono text-[10px] font-bold"
+                      <button
+                        onClick={() => openPreview(item)}
+                        className="flex-1 py-1 bg-amberLight border border-ink text-ink font-mono text-[10px] font-bold"
                       >
-                        🔎 PREVIEW
+                        🔎 PREVIEW & APPLY
                       </button>
                     )}
-                    <button 
+                    <button
                       onClick={() => handleDelete(item.id)}
-                      className="py-1 px-2.5 bg-terracotta border border-ink text-paper font-mono text-[10px] font-bold"
+                      className="py-1 px-2 bg-terracotta border border-ink text-paper font-mono text-[10px] font-bold"
                     >
                       ✕
                     </button>
@@ -420,38 +788,42 @@ export default function InboxPage() {
         </div>
       </div>
 
-      {/* Preview and Edit Section */}
-      {editingId && (
-        <div className="bg-surface border-2 border-ink p-4 space-y-4">
-          <div className="flex justify-between items-center border-b border-ink pb-2">
-            <span className="font-mono text-xs font-bold text-ink block uppercase tracking-wider">
-              Preview & Edit Extracted Model
+      {/* Structured Preview */}
+      {previewId && previewPayload && (
+        <div className="bg-surface border-2 border-ink p-5 space-y-4">
+          <div className="flex justify-between items-center border-b-2 border-ink pb-2">
+            <span className="font-mono text-xs font-bold text-ink uppercase tracking-wider">
+              PREVIEW & EDIT EXTRACTED DATA
             </span>
-            <button 
-              onClick={() => setEditingId(null)}
+            <button
+              onClick={() => { setPreviewId(null); setPreviewPayload(null); }}
               className="font-mono text-xs font-bold text-terracotta hover:underline"
             >
-              Cancel
+              Close
             </button>
           </div>
 
-          <div className="space-y-3">
-            <p className="text-xs text-inkLight font-mono">
-              Review and edit the extracted schema entities before writing to the database. Use strict JSON formatting.
-            </p>
-            <textarea 
-              rows={12}
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              className="border-2 border-ink p-2 w-full bg-paper font-mono text-xs focus:ring-0 rounded-none"
-            />
-            <button 
-              onClick={() => handleApply(editingId)}
-              className="py-2 px-6 bg-sage border-2 border-ink text-paper font-mono text-xs font-bold active:translate-x-[1px] active:translate-y-[1px]"
-            >
-              ✅ APPLY TO SEMESTER
-            </button>
-          </div>
+          <p className="font-mono text-[10px] text-inkLight">
+            Review the AI-extracted entities below. Edit or delete items before committing to the database.
+          </p>
+
+          {applyError && (
+            <div className="bg-terracottaLight border-2 border-terracotta p-3 font-mono text-xs text-terracottaDark">
+              {applyError}
+            </div>
+          )}
+          {applySuccess && (
+            <div className="bg-sageLight border-2 border-sage p-3 font-mono text-xs text-sageDark">
+              {applySuccess}
+            </div>
+          )}
+
+          <StructuredPreview
+            payload={previewPayload}
+            onChange={setPreviewPayload}
+            onApply={handleApply}
+            applying={applying}
+          />
         </div>
       )}
     </div>

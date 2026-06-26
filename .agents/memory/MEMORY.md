@@ -1,3 +1,6 @@
 - [NexusDesk design system](nexusdesk-design.md) — Muted Neo Brutalist rules: zero radius, no @apply component classes in Tailwind v4, brutal shadows only.
 - [Tailwind v4 @apply restriction](tailwind-v4-apply.md) — @apply in @layer components can only use utilities, NOT other component classes — expand inline.
 - [Drizzle lib stale declarations](drizzle-stale-libs.md) — After adding schema tables, run typecheck:libs before artifact typechecks or you get false "no exported member" errors.
+- [NexusDesk env vars](nexusdesk-env.md) — DATABASE_URL is Replit's PostgreSQL URL; use NEXUSDESK_DB_URL for libsql/SQLite. Both drizzle.config.ts and lib/db/src/index.ts read NEXUSDESK_DB_URL.
+- [NexusDesk workflow commands](nexusdesk-workflows.md) — API Server needs PORT=8080; UI needs PORT=19211 and BASE_PATH=/ — both are required or the process crashes before binding.
+- [NexusDesk DB location](nexusdesk-db-location.md) — sqlite.db lives at artifacts/api-server/sqlite.db (the API server's CWD). drizzle-kit push needs NEXUSDESK_DB_URL=file:../../artifacts/api-server/sqlite.db from lib/db/.

@@ -13,6 +13,7 @@ import ingestRouter from "./ingest";
 import dashboardRouter from "./dashboard";
 import recordRouter from "./record";
 import inboxRouter from "./inbox";
+import demoRouter from "./demo";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(ingestRouter);
 router.use(dashboardRouter);
 router.use(recordRouter);
 router.use(inboxRouter);
+router.use(demoRouter);
 
 export default router;

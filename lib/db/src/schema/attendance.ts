@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -10,7 +10,11 @@ export const attendanceTable = sqliteTable("attendance", {
   eventId: text("event_id").notNull(),
   courseId: text("course_id").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-});
+}, (table) => [
+  index("attendance_course_id_idx").on(table.courseId),
+  index("attendance_event_id_idx").on(table.eventId),
+  index("attendance_status_idx").on(table.status),
+]);
 
 export const insertAttendanceSchema = createInsertSchema(attendanceTable).omit({
   id: true,

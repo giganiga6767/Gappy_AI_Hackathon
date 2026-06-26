@@ -14,8 +14,18 @@ import SessionDetailPage from "@/pages/SessionDetailPage";
 import InboxPage from "@/pages/InboxPage";
 import ExportPage from "@/pages/ExportPage";
 import PlannerPage from "@/pages/PlannerPage";
+import TasksPage from "@/pages/TasksPage";
+import CGPAPage from "@/pages/CGPAPage";
+import ProjectsPage from "@/pages/ProjectsPage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30_000,
+    },
+  },
+});
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -43,6 +53,9 @@ function Router() {
       <Route path="/courses" component={CoursesPage} />
       <Route path="/courses/:courseId" component={CourseDetailPage} />
       <Route path="/courses/:courseId/session/:sessionId" component={SessionDetailPage} />
+      <Route path="/tasks" component={TasksPage} />
+      <Route path="/cgpa" component={CGPAPage} />
+      <Route path="/projects" component={ProjectsPage} />
       <Route path="/export" component={ExportPage} />
       <Route component={NotFound} />
     </Switch>

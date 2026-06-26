@@ -46,7 +46,7 @@ else
   echo "No .env configuration found. Let's set it up."
   read -p "Enter your Google Gemini API Key (Press Enter to run offline/local LLM): " USER_KEY
 
-  echo "DATABASE_URL=\"file:$WORKSPACE_DIR/sqlite.db\"" > "$ENV_FILE"
+  echo "NEXUSDESK_DB_URL=\"file:$WORKSPACE_DIR/artifacts/api-server/sqlite.db\"" > "$ENV_FILE"
   echo "PORT=8080" >> "$ENV_FILE"
   echo "PORT_FRONTEND=19211" >> "$ENV_FILE"
   if [ -n "$USER_KEY" ]; then
@@ -59,7 +59,7 @@ else
   echo "✅ Configured .env with local database path."
 fi
 
-# Load env variables for Drizzle schema push
+# Load env variables (avoids collision with Replit-managed DATABASE_URL)
 export $(grep -v '^#' "$ENV_FILE" | xargs 2>/dev/null)
 
 # 3. Install Monorepo Node dependencies
@@ -83,7 +83,7 @@ fi
 
 # 5. Push Database Schemas (no full typecheck — just push the schema)
 echo -e "\n🗄️ Provisioning local SQLite database schema..."
-npx pnpm@9 --filter @workspace/db push
+NEXUSDESK_DB_URL="file:$WORKSPACE_DIR/artifacts/api-server/sqlite.db" npx pnpm@9 --filter @workspace/db push
 if [ $? -ne 0 ]; then
   echo "❌ Error: Database schema push failed."
   exit 1

@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -16,7 +16,12 @@ export const eventsTable = sqliteTable("events", {
   courseId: text("course_id"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
-});
+}, (table) => [
+  index("events_course_id_idx").on(table.courseId),
+  index("events_start_time_idx").on(table.startTime),
+  index("events_recurring_group_idx").on(table.recurringGroupId),
+  index("events_type_idx").on(table.type),
+]);
 
 export const insertEventSchema = createInsertSchema(eventsTable).omit({
   id: true,

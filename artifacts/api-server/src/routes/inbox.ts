@@ -8,7 +8,8 @@ import { exec } from "child_process";
 import { LemmaClient } from "lemma-sdk";
 
 const router = Router();
-const WORKSPACE_DIR = "/home/niranjan/Desktop/Gappy_AI_Hackathon";
+// Resolve workspace root: env override > relative from server package > cwd
+const WORKSPACE_DIR = process.env.NEXUSDESK_ROOT || path.resolve(process.cwd(), "../..");
 const RECORDINGS_DIR = path.join(WORKSPACE_DIR, "recordings");
 
 if (!fs.existsSync(RECORDINGS_DIR)) {
