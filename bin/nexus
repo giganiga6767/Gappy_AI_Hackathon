@@ -1,0 +1,3 @@
+#!/bin/bash
+export PATH="/home/niranjan/.nvm/versions/node/v20.20.2/bin:$PATH"
+/home/niranjan/Desktop/Gappy_AI_Hackathon/node_modules/.pnpm/node_modules/.bin/tsx /home/niranjan/Desktop/Gappy_AI_Hackathon/bin/nexus.mjs "$@"

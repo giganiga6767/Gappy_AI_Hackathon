@@ -1,92 +1,124 @@
-# 🖥️ NexusDesk (aka Nexus Deck)
-### Academic & Professional Command Center
+# NexusDesk
+> Your academic desk. Quiet, intentional, and durable.
 
-Welcome to **NexusDesk**—a standalone Academic & Professional Command Center built with a gorgeous **Muted Neo-Brutalist** design. This app integrates a fluid standup/meeting timeline, automated document parsing via AI, course attendance tracking, CGPA simulation, Kanban task boards, project roadmap tracking, and daily routine logs.
-
----
-
-## ⚡ Easy Setup (One-Click / Single-Command)
-
-To make it as easy as possible for everyone, **no local database installation is required** because the project uses a hosted development database by default.
-
-### 🪟 Windows Users (Standard Command)
-1. Clone or download this repository.
-2. Double-click the **`setup.bat`** file in the root folder, or run it in your terminal:
-   ```cmd
-   setup.bat
-   ```
-   *This script will automatically detect and install Node.js (via winget if missing), install `pnpm`, set up your `.env` configuration, download all dependencies, and launch the site.*
-
-### 🐧 Linux / macOS Users
-1. Clone or download this repository.
-2. Run the launch script in your terminal:
-   ```bash
-   chmod +x launch.sh
-   ./launch.sh
-   ```
-
-Once the script completes, the app will be running at:
-- **Frontend App**: [http://localhost:19211/](http://localhost:19211/)
-- **API Server**: [http://localhost:8080/](http://localhost:8080/)
+NexusDesk is a local-first, zero-lock-in academic workspace built for students and researchers. It combines a structured academic scheduler, a single-queue ingestion inbox, and agentic workflows to organize your courses, sessions, notes (knowledge), and actions without the noise of modern SaaS platforms.
 
 ---
 
-## 🛑 What is NexusDesk?
-**NexusDesk** is an all-in-one productivity suite that bridges academic and professional workflows. You can toggle between **Student Mode** (classes, timetable, syllabus uploads, CGPA simulators) and **Professional Mode** (billable hours tracker, sprints, standups, client follow-up email templates) using the toggle switcher in the top navigation bar.
+## ━━━━━━━━━━━━━━━━━━
+## 1. CORE PHILOSOPHY & CONCEPT MODEL
+## ━━━━━━━━━━━━━━━━━━
 
----
+NexusDesk operates on a strict hierarchical structure, eliminating generic productivity clutter (like hardware tracking or CGPA gauges) in favor of inevitable academic relationships:
 
-## 🎨 Brutal Design Rules
-NexusDesk features a high-contrast, tactile design system:
-1. **Zero Border Radius**: Flat blocks with `border-radius: 0px` globally.
-2. **Neo-Brutalist Colors**: High-contrast texts, clean backgrounds (`#F1F0E8` / `#E8E7DF`), and strong borders (`#2D2D2D`).
-3. **Offset Shadows**: Solid block offset shadows (`shadow-brutal`) instead of fuzzy blurs.
-
----
-
-## 📂 Project Structure
 ```
-├── backend/              # Event-driven agentic Lemma SDK TypeScript Backend
-│   ├── src/datastores/   # Lemma Datastore schemas (Student, Enterprise)
-│   ├── src/agents/       # Agent configurations (Triage, Copilot, Solution Arch)
-│   ├── src/workflows/    # Event & file triggers (Watcher, Cron, Unblocker)
-│   └── src/api/          # REST server endpoints and routing
-├── artifacts/
-│   ├── api-server/       # Express Backend API server (mock/integrated frontend support)
-│   └── nexusdesk/        # React + Vite Frontend application
-├── lib/
-│   └── db/               # PostgreSQL Database schemas (Drizzle ORM)
-├── .env.example          # Template environment configurations
-├── setup.bat             # Single-command setup for Windows
-├── launch.sh             # Launch script for Unix-like systems
+Semester (Active range name, startDate, endDate)
+   └── Course (subjectCode, name, shortName, creditWeight, facultyName, roomNumber)
+         └── Session (Weekly class occurrences or one-shot exams, lectures, location, date/time)
+               ├── Artifact (Any material: audio recording, notes, transcripts, PDFs)
+               └── Action (Checklist tasks, deadlines, priorities)
 ```
 
-### ⚙️ Starting the Agentic Backend
-To launch the newly configured event-driven agentic backend:
+---
+
+## ━━━━━━━━━━━━━━━━━━
+## 2. SYSTEM ARCHITECTURE & DATA FLOW
+## ━━━━━━━━━━━━━━━━━━
+
+NexusDesk runs as a multi-process, local-first application on your machine:
+
+```
+[Vite Frontend] (Port 19211)
+      │  ▲
+      │  │ API requests
+      ▼  │
+[Express API Server] (Port 8080) ───[Local SQLite Database] (sqlite.db)
+      │  ▲                                    ▲
+      │  │                                    │
+      │  │ Syncs actions                      │
+      ▼  │                                    │ Polls/Scans
+[Lemma Agentic Backend] (Port 4000) ──────────┘
+```
+
+1.  **Vite Frontend (React/Wouter)**: A muted, minimal Neo-Brutalist user interface running on port `19211`.
+2.  **Express API Server**: Runs on port `8080` (automatically proxied by Vite). It coordinates local database transactions (`sqlite.db` using Drizzle ORM) and exposes endpoints for Inbox management and exports.
+3.  **Lemma Agentic Backend**: Runs on port `4000`. Built using the **Lemma SDK**, it runs background agentic workflows:
+    *   **Ingestion Watcher**: Monitors the local `./transcripts` folder for text files, routing them using `triageAgent` into appropriate datastores.
+    *   **Academic Cron Job**: Runs a daily scheduler that automatically invokes the `AcademicProactiveCopilot` agent to generate customized study plans and gather video explainers for upcoming task deadlines.
+4.  **Local SQLite Database (`sqlite.db`)**: Stores all academic state locally. No remote connection URLs required.
+
+---
+
+## ━━━━━━━━━━━━━━━━━━
+## 3. HOW THE INBOX PIPELINE WORKS (Capture ➔ Apply)
+## ━━━━━━━━━━━━━━━━━━
+
+To prevent AI halluncinations from directly corrupting your planner state, all inputs follow a secure stage pipeline:
+
+```
+Capture (CLI / Web) ──> Understand (LLM Parsing) ──> Preview (Edit JSON) ──> Apply (Write to DB)
+```
+
+*   **Capture**: Paste a message, drag-and-drop a file (PDF/Image), or record live microphone/system audio. The file is copied to `recordings/` and logged in the `inbox` table with status `captured`.
+*   **Understand**: The system runs transcriptions (Whisper or Gemini) and passes the unstructured contents to the LLM (Gemini or local Ollama), which maps the data to the simplified conceptual model (courses, sessions, actions), saving it as JSON under the `analysis` field.
+*   **Preview**: The Web UI shows the extracted entities in an interactive JSON editor, allowing the user to review and correct any errors.
+*   **Apply**: Upon approval, the data is committed to the main tables, and the item is archived. When Actions (tasks) are applied, they are automatically mirrored to the local Lemma datastore (`student_tasks`) via the **Lemma SDK**.
+
+---
+
+## ━━━━━━━━━━━━━━━━━━
+## 4. CLINICAL CLI ENGINE: `nexus`
+
+Exposes all local-first automation commands under a unified global executable wrapper `./bin/nexus`:
+
 ```bash
-cd backend
-npm install
-npm run dev
+# Capture text pastes, local files, or record live audio
+./bin/nexus capture [--text "<content>" | --file <path> | --record]
+
+# Options for capture:
+#   --record : Starts interactive microphone recording.
+#   --system : Loops back system speaker output (captures Zoom/YouTube instead of room microphone).
+
+# Shortcut alias for capture --file <file>
+./bin/nexus import <file> [--title "<name>"]
+
+# Zero lock-in export (compiles semester.zip containing calendar.ics, summary.md, actions.md, and media)
+./bin/nexus export <zip|ics|json|md>
 ```
-*This will spin up the Express API Server on port 4000, start the transcript directory file watcher, activate the daily academic deadline cron job, and register status listeners to unblock tasks.*
 
 ---
 
-## 🧠 Cognitive Ingestion (AI Syllabus Scan)
-If you wish to parse custom files or timetables using the AI cognitive scanner, you can enter your **Gemini API key** in the Settings icon (top-right gear) on the interface, or supply it in the `.env` file as `GEMINI_API_KEY`. 
-If you do not have an API key, you can click **"LOAD DEMO SESSION"** on the Ingest page to populate the app with realistic demo data instantly without any keys.
+## ━━━━━━━━━━━━━━━━━━
+## 5. ZERO-FRICTION INSTALL & RUN
+## ━━━━━━━━━━━━━━━━━━
 
----
+### System Prerequisites
+Ensure system packages for audio recording and compression are installed:
+```bash
+sudo apt update && sudo apt install ffmpeg alsa-utils pulseaudio-utils zip -y
+```
 
-## 🛠️ Recent Fixes & Compliance Updates
+### Installation
+Run the zero-friction script to configure Node workspaces, install dependencies, configure the SQLite path, and push database schemas:
+```bash
+bash setup.sh
+```
 
-The following critical issues were resolved to secure maximum evaluation points:
-1. **Lemma SDK Integration (15% utilization weight):** Added a first-class **"Lemma SDK"** option to the settings LLM list. The backend now integrates the Lemma client with a built-in graceful fallback to Gemini/Ollama in case the local Lemma server is not running.
-2. **OAuth Callback Routing:** Fixed Google/GitHub OAuth logins which previously redirected users to port 8080 and stranded them. They now redirect back to the React app on port 19211.
-3. **WebSocket Mocking:** Cleaned up background WebSocket connection failures and console errors by statically mocking the sync status to `connected`. The top header now displays a clean, green Wifi status.
+### Configure Keys
+Create a `.env` file in the root directory to toggle between cloud Gemini and local models:
+```env
+DATABASE_URL="file:/home/niranjan/Desktop/Gappy_AI_Hackathon/sqlite.db"
+PORT=8080
+PORT_FRONTEND=19211
+GEMINI_API_KEY="your_google_ai_studio_key"
+```
+*If no API key is provided, the system falls back to CPU-quantized Faster-Whisper and local Ollama models (Llama 3 / Llama 3.2 Vision).*
 
----
-
-## 🚀 Team Vibe Coding Guide
-We have created a dedicated guide for non-coders (ECE & Mech students) on how to download and use **Cursor**, **Antigravity**, and the **Lemma SDK** to easily modify, debug, and add features via prompt-based engineering:
-* **[Vibe Coding Guide (VIBE_CODING_GUIDE.md)](file:///home/niranjan/Desktop/Gappy_AI_Hackathon/Scheduler-integrated/VIBE_CODING_GUIDE.md)**
+### Launching the Workspace
+Start the multi-process workspace in the background:
+```bash
+bash launch.sh
+```
+*   **Vite Interface**: [http://localhost:19211](http://localhost:19211)
+*   **Express API Server**: Port `8080`
+*   **Lemma Agentic Backend**: Port `4000`

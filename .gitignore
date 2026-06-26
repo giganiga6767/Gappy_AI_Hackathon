@@ -1,10 +1,44 @@
-# Ignore the local raw Scheduler folder (not needed for teammates)
-Scheduler/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+ENV/
+env/
 
-# Ignore local PDF reports and zip files in root
-*.pdf
-*.zip
-
-# Ignore standard system files
+# OS files
 .DS_Store
 Thumbs.db
+
+# Local environment / keys
+.env
+.env.local
+
+# Local media output (if any)
+*.wav
+*.mp3
+*.docx
+*.pdf
+*.txt
+*.notes.md
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build and IDE outputs
+dist/
+**/dist/
+*.tsbuildinfo
+**/*.tsbuildinfo
+.cache/
+.replit-artifact/
+**/.replit-artifact/
+
+# Local databases & media
+sqlite.db
+recordings/
+**/recordings/
+
