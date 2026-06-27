@@ -104,7 +104,7 @@ router.post("/inbox/capture", async (req, res): Promise<void> => {
 
 // Helper for Gemini / Ollama call
 async function callGemini(prompt: string, apiKey: string, base64Image?: string): Promise<string> {
-  const models = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-flash-latest"];
+  const models = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
   let lastError: Error | null = null;
 
   for (const model of models) {
