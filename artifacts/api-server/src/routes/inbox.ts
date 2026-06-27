@@ -487,7 +487,7 @@ router.post("/inbox/:id/conflicts", async (req, res): Promise<void> => {
     const existingEvents = await db.select().from(eventsTable);
     if (payload.sessions && Array.isArray(payload.sessions)) {
       for (const sess of payload.sessions) {
-        if (sess.dayOfWeek !== undefined) {
+        if (!sess.date && sess.dayOfWeek !== undefined) {
           for (const ev of existingEvents) {
             if (!ev.isRecurring) continue;
             const evStart = new Date(ev.startTime);
@@ -646,7 +646,7 @@ router.post("/inbox/:id/apply", async (req, res): Promise<void> => {
           courseId = courseMap.get(sess.subjectCode.toUpperCase()) || null;
         }
 
-        if (sess.dayOfWeek !== undefined) {
+        if (!sess.date && sess.dayOfWeek !== undefined) {
           const recurringGroupId = crypto.randomUUID();
           const toInsert = [];
           const cursor = new Date(semStartDate);
