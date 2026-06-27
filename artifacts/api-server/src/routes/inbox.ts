@@ -104,7 +104,7 @@ router.post("/inbox/capture", async (req, res): Promise<void> => {
 
 // Helper for Gemini / Ollama call
 async function callGemini(prompt: string, apiKey: string, base64Image?: string): Promise<string> {
-  const models = ["gemini-1.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+  const models = ["gemini-flash-latest", "gemini-2.5-flash"];
   let lastError: Error | null = null;
 
   for (const model of models) {
@@ -162,8 +162,8 @@ async function callGemini(prompt: string, apiKey: string, base64Image?: string):
       } catch (err: any) {
         lastError = err;
         attempts++;
+        console.warn(`Gemini model ${model} error (attempt ${attempts}/${maxAttempts}): ${err.message}`);
         if (err.name === "TimeoutError" || (err.message && (err.message.includes("503") || err.message.includes("429") || err.message.includes("timeout")))) {
-          console.warn(`Gemini model ${model} temporary error or timeout (attempt ${attempts}/${maxAttempts}): ${err.message}. Retrying...`);
           await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
         } else {
           break;
