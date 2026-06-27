@@ -1,0 +1,48 @@
+services:
+  # 1. Express API & Frontend Web Service (Unified)
+  - type: web
+    name: nexusdesk-web
+    env: node
+    plan: free
+    buildCommand: PORT=8080 BASE_PATH="/" pnpm install && PORT=8080 BASE_PATH="/" pnpm build
+    startCommand: pnpm --filter @workspace/api-server start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: BASE_PATH
+        value: /
+      - key: DATABASE_URL
+        value: "" # Fill with Turso connection string in Render panel
+      - key: NEXUSDESK_DB_URL
+        value: "" # Fill with Turso connection string in Render panel
+      - key: GEMINI_API_KEY
+        value: "" # Fill with Gemini API Key
+      - key: GOOGLE_API_KEY
+        value: "" # Fill with Gemini API Key
+      - key: ANTIGRAVITY_API_KEY
+        value: "" # Fill with Gemini API Key
+
+  # 2. Lemma Agentic Backend Worker
+  - type: web
+    name: nexusdesk-lemma-backend
+    env: node
+    plan: free
+    buildCommand: pnpm install && pnpm --filter work-study-backend build
+    startCommand: pnpm --filter work-study-backend start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        value: "" # Fill with Turso connection string in Render panel
+      - key: NEXUSDESK_DB_URL
+        value: "" # Fill with Turso connection string in Render panel
+      - key: GEMINI_API_KEY
+        value: "" # Fill with Gemini API Key
+      - key: GOOGLE_API_KEY
+        value: "" # Fill with Gemini API Key
+      - key: ANTIGRAVITY_API_KEY
+        value: "" # Fill with Gemini API Key
