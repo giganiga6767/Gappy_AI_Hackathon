@@ -4,12 +4,12 @@ Students don't fail to stay organized because they lack apps — they fail becau
 
 ---
 
-## 📐 Architecture Summary
+## Architecture Summary
 NexusDesk is structured as a pnpm monorepo consisting of a React Vite frontend, an Express API server, and a Lemma agentic backend, communicating locally via REST and Webhook payloads. All application states are stored locally inside a single SQLite file (`sqlite.db`) managed via Drizzle ORM. Python-based subprocesses handle heavy workloads like offline Whisper transcription and multimodal document summary generations.
 
 ---
 
-## 🧠 Core Centerpiece: Lemma Agentic Architecture
+## Core Centerpiece: Lemma Agentic Architecture
 
 The background execution engine runs on port `4000` via the Lemma SDK. It leverages a student datastore, an enterprise datastore, and three custom autonomous agents to manage workloads:
 
@@ -51,7 +51,7 @@ API server database mutations dispatch event payloads directly to the Lemma back
 
 ---
 
-## 🗄️ Database Schema
+## Database Schema
 
 All data lives in `sqlite.db` at the project root. Managed by **Drizzle ORM**.
 
@@ -73,7 +73,7 @@ All data lives in `sqlite.db` at the project root. Managed by **Drizzle ORM**.
 
 ---
 
-## 🌐 API Reference
+## API Reference
 
 Base URL: `http://localhost:8080` (JSON-based payloads, UUID keys).
 
@@ -140,7 +140,7 @@ Base URL: `http://localhost:8080` (JSON-based payloads, UUID keys).
 
 ---
 
-## 🐍 Python Processing Scripts
+## Python Processing Scripts
 
 Located in `scripts/`. Invoked by the Express API server as child processes.
 
@@ -168,7 +168,7 @@ python3 scripts/gemini_report_maker.py --data grades.csv --images chart1.png --t
 
 ---
 
-## 📂 Monorepo Package Map
+## Monorepo Package Map
 
 This is a **pnpm workspace** monorepo. Packages reference each other via `@workspace/*` aliases.
 
@@ -192,7 +192,7 @@ This regenerates `lib/api-client-react/src/generated/` and `lib/api-zod/src/gene
 
 ---
 
-## ⚙️ Contributing & Development Flow
+## Contributing & Development Flow
 
 To contribute to NexusDesk:
 1. **Branch creation**: Branch off `main` for feature development.

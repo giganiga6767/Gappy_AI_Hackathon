@@ -6,7 +6,7 @@ Here is a showcase of how NexusDesk solves real academic pain points.
 
 ---
 
-## 📥 Hero Feature: The AI Ingestion Inbox
+## Hero Feature: The AI Ingestion Inbox
 
 * **Problem**: 
   Setting up a new semester is exhausting. You have to manually enter dozens of recurring lectures, parse homework deadlines from multiple PDFs, schedule preparation milestones leading up to exams, and organize learning materials. Within a week, the manual effort fails.
@@ -20,7 +20,7 @@ Here is a showcase of how NexusDesk solves real academic pain points.
 
 ---
 
-## 📅 Conflict Prevention & Scheduling
+## Conflict Prevention & Scheduling
 
 * **Problem**:
   Setting up academic schedules manually often results in silent calendar clashes, double-bookings, and duplicate tasks across different pages.
@@ -34,7 +34,7 @@ Here is a showcase of how NexusDesk solves real academic pain points.
 
 ---
 
-## 🎙️ Non-Blocking Audio Notes Pipeline
+## Non-Blocking Audio Notes Pipeline
 
 * **Problem**:
   Classroom discussions and online lectures move too fast for comprehensive note-taking. Attempting to write down details causes students to miss key concepts.
@@ -48,7 +48,7 @@ Here is a showcase of how NexusDesk solves real academic pain points.
 
 ---
 
-## 📊 Performance, Grades & Projects
+## Performance, Grades & Projects
 
 * **Problem**:
   Tracking grades across separate spreadsheets, calculating minimum final exam scores to stay passing, and tracking side projects alongside academic coursework is fragmented.
@@ -63,7 +63,7 @@ Here is a showcase of how NexusDesk solves real academic pain points.
 
 ---
 
-## 🛡️ Zero Lock-In Offline Philosophy
+## Zero Lock-In Offline Philosophy
 
 * **Problem**:
   Cloud tools keep your data locked in proprietary databases, making it difficult to back up, export, or transition to other tools.

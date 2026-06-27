@@ -6,7 +6,7 @@ This guide walks you through setting up, running, and exploring NexusDesk.
 
 ---
 
-## 🛠️ Step 1: Install System Prerequisites
+## Step 1: Install System Prerequisites
 
 First, open your Linux terminal or WSL shell to install the required system utilities:
 
@@ -16,7 +16,7 @@ sudo apt update && sudo apt install ffmpeg zip alsa-utils pulseaudio-utils -y
 
 ---
 
-## 📦 Step 2: Run Setup
+## Step 2: Run Setup
 
 Run the automated bootstrapping script at the root of the project:
 
@@ -26,7 +26,7 @@ bash setup.sh
 
 During setup, you will be prompted for a **Google Gemini API Key**. You can paste your key (see [INSTALL_LINUX.md](./INSTALL_LINUX.md) to get one for free) or press **Enter** to skip and run offline with local models.
 
-### ❓ What just happened?
+### ? What just happened?
 The `setup.sh` script automated the following configurations:
 1. Created your local `.env` environment configuration.
 2. Installed all Node.js workspace dependencies via `pnpm`.
@@ -35,7 +35,7 @@ The `setup.sh` script automated the following configurations:
 
 ---
 
-## ⚡ Step 3: Launch the Workspace
+## Step 3: Launch the Workspace
 
 Start all concurrent services with a single command:
 
@@ -43,7 +43,7 @@ Start all concurrent services with a single command:
 bash launch.sh
 ```
 
-### ❓ What just happened?
+### ? What just happened?
 The `launch.sh` script runs three background services simultaneously:
 
 | Service | Port | Description | URL |
@@ -56,7 +56,7 @@ To stop all services cleanly, press `Ctrl+C` in your terminal.
 
 ---
 
-## 💻 Terminal First: The `nexus` CLI
+## Terminal First: The `nexus` CLI
 
 The `./bin/nexus` CLI tool gives you terminal-first control over your academic desk. Here are the most useful commands:
 
@@ -96,7 +96,7 @@ After capturing, navigate to **Inbox** in the Web UI to preview and commit the d
 
 ---
 
-## 👥 Daily Team Workflows
+## Daily Team Workflows
 
 If you are developing or using NexusDesk with a team, follow these best practices:
 

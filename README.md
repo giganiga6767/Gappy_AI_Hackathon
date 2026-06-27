@@ -6,7 +6,7 @@ Students don't fail to stay organized because they lack apps — they fail becau
 
 ---
 
-## ⚡ The 60-Second "Magic Demo" Ingestion Flow
+## The 60-Second "Magic Demo" Ingestion Flow
 
 1. **Ingest**: Import an academic syllabus (`./bin/nexus import syllabus.pdf`).
 2. **AI Analysis**: The background engine automatically parses the document.
@@ -15,17 +15,17 @@ Students don't fail to stay organized because they lack apps — they fail becau
 
 ---
 
-## 📖 Documentation Quick Links
+## Documentation Quick Links
 
-* 🌟 **[Product Feature Showcase](./FEATURES.md)**: Detailed breakdown of the AI Ingestion Inbox, non-blocking audio pipeline, and GPA simulator.
-* 🚀 **[Friendly Onboarding Guide](./GETTING_STARTED.md)**: Setup, launching background services, CLI usage, and daily workflows.
-* 🛠️ **[Developer & Reference Guide](./DEVELOPER.md)**: Database schemas, API reference, Lemma agent architecture, and code package map.
-* 🐧 **[Linux Installation Guide](./INSTALL_LINUX.md)**: Spoon-fed setup guide for Ubuntu, Debian, and Linux Mint.
-* 🪟 **[Windows Installation Guide](./INSTALL_WINDOWS.md)**: Native and WSL installation instructions.
+* **[Product Feature Showcase](./FEATURES.md)**: Detailed breakdown of the AI Ingestion Inbox, non-blocking audio pipeline, and GPA simulator.
+* **[Friendly Onboarding Guide](./GETTING_STARTED.md)**: Setup, launching background services, CLI usage, and daily workflows.
+* **[Developer & Reference Guide](./DEVELOPER.md)**: Database schemas, API reference, Lemma agent architecture, and code package map.
+* **[Linux Installation Guide](./INSTALL_LINUX.md)**: Spoon-fed setup guide for Ubuntu, Debian, and Linux Mint.
+* **[Windows Installation Guide](./INSTALL_WINDOWS.md)**: Native and WSL installation instructions.
 
 ---
 
-## 🚦 What Makes NexusDesk Different?
+## What Makes NexusDesk Different?
 
 1. **Zero-Friction Ingestion Engine**: No more manual calendar typing or task scheduling. Drop files, text, or recordings, and the system extracts structured data.
 2. **Local-First & Offline Privacy**: All data resides in a single SQLite database file on your machine. All core features (including audio transcription and task extraction) run offline. No cloud accounts, no subscriptions.
@@ -33,7 +33,7 @@ Students don't fail to stay organized because they lack apps — they fail becau
 
 ---
 
-## 🧠 Lemma SDK & Agentic Integration
+## Lemma SDK & Agentic Integration
 
 NexusDesk integrates three background agents to automate student operations:
 
@@ -45,7 +45,7 @@ API server mutations dispatch webhooks directly to the Lemma backend to trigger 
 
 ---
 
-## 🧱 Core Concept Model
+## Core Concept Model
 
 NexusDesk operates on a strict hierarchical structure that mirrors real academic life:
 
@@ -63,7 +63,7 @@ Semester  (name, startDate, endDate, isActive)
 
 ---
 
-## 📐 System Architecture
+## System Architecture
 
 NexusDesk runs as four cooperating processes on your local machine:
 
@@ -106,7 +106,7 @@ NexusDesk runs as four cooperating processes on your local machine:
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 nexusdesk/
@@ -154,7 +154,7 @@ nexusdesk/
 
 ---
 
-## 🚀 Quick Start in 3 Steps
+## Quick Start in 3 Steps
 
 Get NexusDesk up and running in under 2 minutes:
 

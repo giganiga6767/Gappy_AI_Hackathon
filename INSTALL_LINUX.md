@@ -1,10 +1,10 @@
-# 🐧 Linux Installation Guide (Ubuntu / Debian / Mint)
+# Linux Installation Guide (Ubuntu / Debian / Mint)
 
 Students don't fail to stay organized because they lack apps — they fail because manual data entry is too tedious to sustain. NexusDesk eliminates that friction entirely. Drop a blurry timetable photo, a 50-page syllabus PDF, or a messy lecture recording — and your entire semester is set up in seconds.
 
 ---
 
-### 📦 Prerequisites at a Glance
+### Prerequisites at a Glance
 Ensure you have these system utilities installed before proceeding:
 - **Node.js**: v20+ (managed via NVM)
 - **pnpm**: v9+ (monorepo package manager)
@@ -13,7 +13,7 @@ Ensure you have these system utilities installed before proceeding:
 
 ---
 
-## 🚀 Step 1: Install System Dependencies
+## Step 1: Install System Dependencies
 
 Open your terminal and run this command to install the required system libraries:
 
@@ -23,7 +23,7 @@ sudo apt update && sudo apt install -y git curl ffmpeg alsa-utils pulseaudio-uti
 
 ---
 
-## 📦 Step 2: Configure Node.js (v20) & pnpm (v9)
+## Step 2: Configure Node.js (v20) & pnpm (v9)
 
 We will install Node.js v20 via Node Version Manager (NVM) and install pnpm globally:
 
@@ -46,7 +46,7 @@ We will install Node.js v20 via Node Version Manager (NVM) and install pnpm glob
 
 ---
 
-## 📥 Step 3: Clone the Repository & Run Setup
+## Step 3: Clone the Repository & Run Setup
 
 Clone your repository and execute the automated setup script:
 
@@ -58,15 +58,15 @@ bash setup.sh
 
 ---
 
-## 🤖 Step 4: Configure your AI Engine (Gemini vs Ollama)
+## Step 4: Configure your AI Engine (Gemini vs Ollama)
 
 NexusDesk allows processing syllabi, calendars, and text using either Cloud Gemini APIs or 100% offline local AI models.
 
 | Metric | Option A: Google Gemini | Option B: Local Ollama |
 |---|---|---|
-| **Speed** | ⚡ Fast (API-driven processing) | 🐌 Dependent on local hardware CPU/GPU |
+| **Speed** | Fast (API-driven processing) | Dependent on local hardware CPU/GPU |
 | **Quality** | High (Gemini 1.5/2.0 multimodal quality) | Variable (dependent on model size) |
-| **Privacy** | Outgoing API requests | 🔒 100% Local, runs completely offline |
+| **Privacy** | Outgoing API requests | 100% Local, runs completely offline |
 | **Setup** | Requires free API Key | Requires downloading models (~2GB) |
 
 ### Option A: Cloud Mode (Google Gemini)
@@ -98,14 +98,14 @@ NexusDesk allows processing syllabi, calendars, and text using either Cloud Gemi
 
 ---
 
-### 🎙️ Local Audio Transcription (Offline Whisper)
+### Local Audio Transcription (Offline Whisper)
 When transcribing lecture recordings locally:
 - Select the **Local Whisper** option in the Class Notes page of the Web UI.
 - On the first run, the Python script will automatically download the quantized `base.en` Whisper model (~150MB) to your machine. 
 
 ---
 
-## ⚡ Step 5: Launch the Application
+## Step 5: Launch the Application
 
 Start the concurrently running servers:
 
@@ -115,7 +115,7 @@ bash launch.sh
 
 ---
 
-## 🚦 Verify Everything is Working
+## Verify Everything is Working
 
 Before using the app, run these checks to verify that the services are online and connected:
 

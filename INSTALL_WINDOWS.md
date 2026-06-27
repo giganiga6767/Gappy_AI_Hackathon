@@ -1,10 +1,10 @@
-# 🪟 Windows Installation Guide (Native & WSL)
+# Windows Installation Guide (Native & WSL)
 
 Students don't fail to stay organized because they lack apps — they fail because manual data entry is too tedious to sustain. NexusDesk eliminates that friction entirely. Drop a blurry timetable photo, a 50-page syllabus PDF, or a messy lecture recording — and your entire semester is set up in seconds.
 
 ---
 
-### 📦 Prerequisites at a Glance
+### Prerequisites at a Glance
 Ensure you have these system utilities installed before proceeding:
 - **Node.js**: v20+ (managed via NVM or winget)
 - **pnpm**: v9+ (monorepo package manager)
@@ -13,7 +13,7 @@ Ensure you have these system utilities installed before proceeding:
 
 ---
 
-## 💡 Method A: WSL (Windows Subsystem for Linux) — *Highly Recommended*
+## Method A: WSL (Windows Subsystem for Linux) — *Highly Recommended*
 
 Since NexusDesk relies on bash scripts (`setup.sh`, `launch.sh`) and CLI audio recording, running it inside WSL (Ubuntu) provides the smoothest, zero-friction experience. 
 
@@ -34,7 +34,7 @@ Open your new Ubuntu terminal and follow the instructions in **[INSTALL_LINUX.md
 
 ---
 
-## 💻 Method B: Native Windows Setup (PowerShell / Command Prompt)
+## Method B: Native Windows Setup (PowerShell / Command Prompt)
 
 If you prefer running natively on Windows without Linux, follow these steps:
 
@@ -68,9 +68,9 @@ pnpm --filter @workspace/db push-force
 
 | Metric | Option A: Google Gemini | Option B: Local Ollama |
 |---|---|---|
-| **Speed** | ⚡ Fast (API-driven processing) | 🐌 Dependent on local hardware CPU/GPU |
+| **Speed** | Fast (API-driven processing) | Dependent on local hardware CPU/GPU |
 | **Quality** | High (Gemini 1.5/2.0 multimodal quality) | Variable (dependent on model size) |
-| **Privacy** | Outgoing API requests | 🔒 100% Local, runs completely offline |
+| **Privacy** | Outgoing API requests | Local, runs completely offline |
 | **Setup** | Requires free API Key | Requires downloading models (~2GB) |
 
 #### Option A: Cloud Mode (Google Gemini Key)
@@ -121,7 +121,7 @@ pnpm --filter @workspace/api-server --filter @workspace/nexusdesk --filter work-
 
 ---
 
-## 🚦 Verify Everything is Working
+## Verify Everything is Working
 
 Before using the app, run these checks to verify that the services are online and connected:
 
