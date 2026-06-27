@@ -25,10 +25,10 @@ Open your new Ubuntu terminal and follow the instructions in **[INSTALL_LINUX.md
 If you prefer running natively on Windows without Linux, follow these steps:
 
 ### Step 1: Install Prerequisites (One-Command winget Setup)
-Open PowerShell **as Administrator** and run this single command to install Git, Node.js, Python, FFmpeg, and Ollama automatically using the native Windows Package Manager:
+Open PowerShell **as Administrator** and run this single command to install Git, Node.js, Python, FFmpeg, and Ollama automatically using the native Windows Package Manager. If you are using standard Command Prompt (cmd) instead of PowerShell, you should run each command individually instead of using the chained format.
 
 ```powershell
-winget install -e --id Git.Git && winget install -e --id OpenJS.NodeJS.LTS && winget install -e --id Python.Python.3.11 && winget install -e --id Gyan.FFmpeg && winget install -e --id Ollama.Ollama
+winget install -e --id Git.Git; winget install -e --id OpenJS.NodeJS.LTS; winget install -e --id Python.Python.3.11; winget install -e --id Gyan.FFmpeg; winget install -e --id Ollama.Ollama
 ```
 
 *After running, restart your PowerShell or Command Prompt window to refresh your PATH environment variables.*
