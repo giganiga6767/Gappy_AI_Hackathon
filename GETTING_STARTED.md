@@ -1,125 +1,108 @@
-# Getting Started with NexusDesk
+# Onboarding Guide: Get Started in Under 5 Minutes
 
-This guide covers system setup, installation, running the services, CLI usage, and team workflows.
+Students don't fail to stay organized because they lack apps — they fail because manual data entry is too tedious to sustain. NexusDesk eliminates that friction entirely. Drop a blurry timetable photo, a 50-page syllabus PDF, or a messy lecture recording — and your entire semester is set up in seconds.
 
----
-
-## 1. Setup & Installation
-
-For a detailed platform-specific installation guide, please refer to **[INSTALL_LINUX.md](./INSTALL_LINUX.md)** or **[INSTALL_WINDOWS.md](./INSTALL_WINDOWS.md)**.
-
-### Quick Start (Linux/WSL)
-
-1. **System Dependencies**:
-   ```bash
-   sudo apt update && sudo apt install ffmpeg alsa-utils pulseaudio-utils zip -y
-   ```
-
-2. **Run Setup**:
-   ```bash
-   bash setup.sh
-   ```
-   *(Creates `.env`, installs all Node and Python dependencies, and provisions the database schema)*
+This guide walks you through setting up, running, and exploring NexusDesk.
 
 ---
 
-## 2. Running the App
+## 🛠️ Step 1: Install System Prerequisites
 
-Start the three background services concurrently by running:
+First, open your Linux terminal or WSL shell to install the required system utilities:
+
+```bash
+sudo apt update && sudo apt install ffmpeg zip alsa-utils pulseaudio-utils -y
+```
+
+---
+
+## 📦 Step 2: Run Setup
+
+Run the automated bootstrapping script at the root of the project:
+
+```bash
+bash setup.sh
+```
+
+During setup, you will be prompted for a **Google Gemini API Key**. You can paste your key (see [INSTALL_LINUX.md](./INSTALL_LINUX.md) to get one for free) or press **Enter** to skip and run offline with local models.
+
+### ❓ What just happened?
+The `setup.sh` script automated the following configurations:
+1. Created your local `.env` environment configuration.
+2. Installed all Node.js workspace dependencies via `pnpm`.
+3. Configured python requirements for local audio processing and parsing.
+4. Initialized your local SQLite database file (`sqlite.db`) and pushed the tables.
+
+---
+
+## ⚡ Step 3: Launch the Workspace
+
+Start all concurrent services with a single command:
+
 ```bash
 bash launch.sh
 ```
 
-This launch script starts the following services:
+### ❓ What just happened?
+The `launch.sh` script runs three background services simultaneously:
 
 | Service | Port | Description | URL |
 |---|---|---|---|
-| **Vite Frontend** | `19211` | React Neo-Brutalist UI | [http://localhost:19211](http://localhost:19211) |
-| **Express API** | `8080` | Express core REST server | [http://localhost:8080](http://localhost:8080) |
-| **Lemma Backend** | `4000` | Lemma agentic background worker | [http://localhost:4000](http://localhost:4000) |
+| **Vite Frontend** | `19211` | React Neo-Brutalist dashboard interface | [http://localhost:19211](http://localhost:19211) |
+| **Express API Server** | `8080` | Express REST server managing data and local AI scripts | [http://localhost:8080](http://localhost:8080) |
+| **Lemma Backend** | `4000` | Lemma background agents and workflows | [http://localhost:4000](http://localhost:4000) |
 
-> [!NOTE]
-> **Port Conflict Fix**: The Lemma Agentic Backend startup workflow explicitly runs on port `4000` to prevent port collisions with the root `PORT=8080` variable.
-
-To shut down all running servers cleanly, press `Ctrl+C` in your terminal.
-
-### Updating the Database Schema
-After pulling changes that modify `lib/db/src/schema/`:
-```bash
-pnpm --filter @workspace/db push
-```
+To stop all services cleanly, press `Ctrl+C` in your terminal.
 
 ---
 
-## 3. CLI Tool — `nexus`
+## 💻 Terminal First: The `nexus` CLI
 
-The `./bin/nexus` command provides terminal-first access to your academic desk without opening a browser.
+The `./bin/nexus` CLI tool gives you terminal-first control over your academic desk. Here are the most useful commands:
 
-### Ingestion & Capture
+### 1. Zero Lock-In Exports
+Export your data to external calendar apps or local backups instantly:
 ```bash
-# Capture raw text (paste a syllabus, schedule, or meeting notes)
-./bin/nexus capture --text "CS301 lectures: Mon/Wed 10-11am, Room 204, Prof. Kumar"
-
-# Capture a local file (PDF, image, audio, notes)
-./bin/nexus capture --file ./syllabus.pdf --title "CS301 Syllabus" --type pdf
-
-# Capture a local file (shorthand alias)
-./bin/nexus import ./syllabus.pdf --title "CS301 Syllabus"
-
-# Record live microphone audio (Press Ctrl+C to stop)
-./bin/nexus capture --record --title "CS301 Lecture - Week 3"
-
-# Record system audio loopback (Zoom, YouTube, Google Meet)
-./bin/nexus capture --record --system --title "Guest Lecture Recording"
-```
-After capturing, open the Web UI at `localhost:19211` ➔ **Inbox** to review, verify conflicts, and apply the extracted data.
-
-### Zero Lock-In Export
-```bash
-# Full zip export (ZIP with calendar, notes, actions, recordings)
-./bin/nexus export zip
-
-# Calendar only (import into Google Calendar, Apple Calendar, Outlook)
+# Export compatible calendar (.ics) to import into Google/Apple Calendar
 ./bin/nexus export ics
 
-# Raw JSON dump
+# Pack all notes, summaries, tasks, and raw audio files into a ZIP archive
+./bin/nexus export zip
+
+# Export raw JSON data
 ./bin/nexus export json
 
-# Markdown progress summary
+# Export a Markdown summary report of your semester progress
 ./bin/nexus export md
 ```
 
----
-
-## 4. Team Workflow Guide
-
-### Onboarding a New Team Member
+### 2. Ingestion & Recording
+Ingest content into your Inbox from the terminal:
 ```bash
-# 1. Clone the repo
-git clone <repo-url>
-cd nexusdesk
+# Capture raw text or syllabus paste
+./bin/nexus capture --text "CS301 lectures: Mon/Wed 10-11am, Room 204, Prof. Kumar"
 
-# 2. Run setup (installs everything + creates sqlite.db)
-bash setup.sh
-# → Enter Gemini API key when prompted, or press Enter for offline mode
+# Ingest a PDF file
+./bin/nexus import ./syllabus.pdf --title "CS301 Syllabus"
 
-# 3. Launch the workspace
-bash launch.sh
+# Interactively record mic audio (Press Ctrl+C to stop)
+./bin/nexus capture --record --title "Systems Lecture - Week 3"
 
-# 4. Open the UI
-# → http://localhost:19211
+# Record loopback system audio (Zoom meetings, browser videos)
+./bin/nexus capture --record --system --title "Meeting Recording"
 ```
 
-### Day-to-Day Development
-1. **Starting your day**: Run `bash launch.sh` and open `localhost:19211`.
-2. **Capturing syllabus/schedule**: Run `./bin/nexus import ./syllabus.pdf`, then open the Web UI and review/apply the data.
-3. **Pulling changes**:
-   ```bash
-   git pull
-   # If schema changed:
-   pnpm --filter @workspace/db push
-   ```
-4. **Shared Rules**:
-   - Never commit `sqlite.db` or `.env` files (both are git-ignored).
-   - After editing a DB schema, run `pnpm --filter @workspace/db push` locally and inform teammates.
-   - Run `pip install -r requirements.txt` if python scripts/dependencies are updated.
+After capturing, navigate to **Inbox** in the Web UI to preview and commit the data.
+
+---
+
+## 👥 Daily Team Workflows
+
+If you are developing or using NexusDesk with a team, follow these best practices:
+
+* **Starting the workspace**: Always run `bash launch.sh` and access the dashboard at `http://localhost:19211`.
+* **Syncing schema updates**: If you pull changes that modify database schemas under `lib/db/src/schema/`, run:
+  ```bash
+  pnpm --filter @workspace/db push-force
+  ```
+* **Git hygiene**: Never commit `sqlite.db` or `.env` files (both are git-ignored).

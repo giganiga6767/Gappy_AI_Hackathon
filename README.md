@@ -1,21 +1,51 @@
-# NexusDesk
-> Your academic desk. Quiet, intentional, and durable.
+# NexusDesk: Offline-First Agentic Academic Workspace
 
-NexusDesk is a **local-first, offline-capable academic workspace** built for students and researchers. It combines a structured academic scheduler, an AI-powered ingestion inbox, a grade/CGPA simulator, and agentic background workflows — all stored in a single local SQLite file on your machine. No accounts. No cloud lock-in. No SaaS subscriptions.
+NexusDesk solves the single biggest point of failure in student productivity: the tedious, manual data entry required to set up and maintain calendars, assignments, and study schedules.
 
----
-
-## 📖 Quick Links
-
-* 🌟 **[Feature Guide](./FEATURES.md)**: Detailed breakdown of the core features, AI Ingestion Engine, conflict checker, and audio pipeline.
-* 🚀 **[Getting Started Guide](./GETTING_STARTED.md)**: Setup, Installation, Launching the Servers, CLI usage, and Team workflows.
-* 🛠️ **[Developer & Reference Guide](./DEVELOPER.md)**: Database schemas, API endpoints reference, Python scripts, Lemma Agents, and feature implementation status.
-* 🐧 **[Linux Install Guide](./INSTALL_LINUX.md)**: Spoon-fed setup guide for Ubuntu/Debian/Mint.
-* 🪟 **[Windows Install Guide](./INSTALL_WINDOWS.md)**: Spoon-fed setup guide for Windows Native & WSL.
+Students don't fail to stay organized because they lack apps — they fail because manual data entry is too tedious to sustain. NexusDesk eliminates that friction entirely. Drop a blurry timetable photo, a 50-page syllabus PDF, or a messy lecture recording — and your entire semester is set up in seconds.
 
 ---
 
-## 1. Core Concept Model
+## ⚡ The 60-Second "Magic Demo" Ingestion Flow
+
+1. **Ingest**: Import an academic syllabus (`./bin/nexus import syllabus.pdf`).
+2. **AI Analysis**: The background engine automatically parses the document.
+3. **Commit**: Review automatically extracted courses, recurring schedules, task priorities, and project milestones in the Web Inbox, then click "Apply."
+4. **Result**: Your semester calendar, Kanban board, grade ledger, and spaced study plans are instantly provisioned in your local database.
+
+---
+
+## 📖 Documentation Quick Links
+
+* 🌟 **[Product Feature Showcase](./FEATURES.md)**: Detailed breakdown of the AI Ingestion Inbox, non-blocking audio pipeline, and GPA simulator.
+* 🚀 **[Friendly Onboarding Guide](./GETTING_STARTED.md)**: Setup, launching background services, CLI usage, and daily workflows.
+* 🛠️ **[Developer & Reference Guide](./DEVELOPER.md)**: Database schemas, API reference, Lemma agent architecture, and code package map.
+* 🐧 **[Linux Installation Guide](./INSTALL_LINUX.md)**: Spoon-fed setup guide for Ubuntu, Debian, and Linux Mint.
+* 🪟 **[Windows Installation Guide](./INSTALL_WINDOWS.md)**: Native and WSL installation instructions.
+
+---
+
+## 🚦 What Makes NexusDesk Different?
+
+1. **Zero-Friction Ingestion Engine**: No more manual calendar typing or task scheduling. Drop files, text, or recordings, and the system extracts structured data.
+2. **Local-First & Offline Privacy**: All data resides in a single SQLite database file on your machine. All core features (including audio transcription and task extraction) run offline. No cloud accounts, no subscriptions.
+3. **Agentic Workflows**: Powered by three specialized background agents via the Lemma SDK that proactively manage study strategies, triage incoming items, and resolve project blockers.
+
+---
+
+## 🧠 Lemma SDK & Agentic Integration
+
+NexusDesk integrates three background agents to automate student operations:
+
+* **Triage Agent** (`triageAgent.ts`): Automatically scans raw incoming transcripts in the `./transcripts/` directory, extracts actionable checklist items, and routes them to student records.
+* **Academic Copilot Agent** (`academicCopilot.ts`): Triggers via event webhooks when a new task is created. It analyzes task parameters to generate custom study roadmaps and recommend video/text learning resources.
+* **Enterprise Solution Architect** (`enterpriseSolutionArch.ts`): Monitors projects and triggers troubleshooting advice if a milestone becomes blocked.
+
+API server mutations dispatch webhooks directly to the Lemma backend to trigger these agentic background runs asynchronously, keeping client-side operations fast and non-blocking.
+
+---
+
+## 🧱 Core Concept Model
 
 NexusDesk operates on a strict hierarchical structure that mirrors real academic life:
 
@@ -29,13 +59,13 @@ Semester  (name, startDate, endDate, isActive)
                └── Action / Task  (title, dueDate, priority, status, linkedCourseId)
 ```
 
-**Everything flows from the Semester downward.** There are no orphan tasks or floating events — every piece of data has a clear academic owner.
+**Everything flows from the Semester downward.** Data is cleanly partitioned, eliminating floating tasks and orphaned events.
 
 ---
 
-## 2. System Architecture
+## 📐 System Architecture
 
-NexusDesk runs as **four cooperating processes** on your local machine:
+NexusDesk runs as four cooperating processes on your local machine:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -67,34 +97,16 @@ NexusDesk runs as **four cooperating processes** on your local machine:
 
 | Process | Port | Technology | Role |
 |---|---|---|---|
-| Vite Frontend | `19211` | React + TypeScript + Vite | Neo-brutalist UI, all user interactions |
+| Vite Frontend | `19211` | React + TypeScript + Vite | Neo-brutalist UI dashboard, all user interactions |
 | Express API Server | `8080` | Express + TypeScript + Drizzle | Database CRUD, AI ingestion, audio processing |
 | Lemma Agentic Backend | `4000` | TypeScript + Lemma SDK | Background AI workflows, cron jobs |
 | Python Scripts | N/A | Python 3, Whisper, Gemini SDK | Transcription, note generation, report creation |
 
-**The frontend proxies all `/api/*` requests to port `8080`**, so during development you only need to open `localhost:19211`.
+*The React frontend proxies all `/api/*` requests to port `8080` automatically.*
 
 ---
 
-## 3. How to Use AI Features for Free
-
-NexusDesk supports two free AI options for syllabus ingestion, conflict checks, and summaries:
-
-1. **Option A: Google Gemini (Free API Key)** — *Recommended*
-   - Get a free-tier API key from [Google AI Studio](https://aistudio.google.com/).
-   - Add it to your `.env` file under `GEMINI_API_KEY`, `GOOGLE_API_KEY`, and `ANTIGRAVITY_API_KEY`.
-   - Ensure the toggle in your Web UI is set to **ANTIGRAVITY PRO**.
-2. **Option B: Local Ollama (100% Free & Offline)**
-   - Download and run **Ollama** from [ollama.com](https://ollama.com/).
-   - Pull the recommended models: `ollama pull Llama3` and `ollama pull llama3.2-vision`.
-   - Ensure the toggle in your Web UI is set to **OLLAMA (LOCAL)**.
-3. **Local Audio Transcription (100% Free & Offline)**
-   - Convert recorded lectures to transcripts on your CPU offline.
-   - The Python script automatically downloads the `base.en` Whisper model (~150MB) on the first run; no API keys or servers required.
-
----
-
-## 4. Project Structure
+## 📂 Project Structure
 
 ```
 nexusdesk/
@@ -139,3 +151,24 @@ nexusdesk/
 ├── launch.sh                # One-command start all servers
 └── .env                     # Local environment config (git-ignored)
 ```
+
+---
+
+## 🚀 Quick Start in 3 Steps
+
+Get NexusDesk up and running in under 2 minutes:
+
+1. **Install System Dependencies**
+   ```bash
+   sudo apt update && sudo apt install ffmpeg zip -y
+   ```
+2. **Run Setup**
+   ```bash
+   bash setup.sh
+   ```
+   *(Installs dependencies, provisions the local SQLite database schema, and configures environment variables).*
+3. **Launch the Workspace**
+   ```bash
+   bash launch.sh
+   ```
+   *Open [http://localhost:19211](http://localhost:19211) in your browser.*

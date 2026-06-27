@@ -1,79 +1,76 @@
-# NexusDesk Core Features
+# NexusDesk Product Showcase
 
-NexusDesk is a comprehensive, local-first Academic OS designed to manage your college schedules, notes, tasks, grades, and projects. Here is the full breakdown of features available in the platform:
+Students don't fail to stay organized because they lack apps — they fail because manual data entry is too tedious to sustain. NexusDesk eliminates that friction entirely. Drop a blurry timetable photo, a 50-page syllabus PDF, or a messy lecture recording — and your entire semester is set up in seconds.
 
----
-
-## 📅 Scheduler & Semester Management
-
-### Semester & Course Structuring
-- **Academic Semester Periods**: Define start and end dates for semesters, marking the current one as **active**. All data is automatically partitioned by the active semester.
-- **Credit-Weighted Courses**: Associate room numbers, faculty names, credit weights, and custom visual color tags with courses.
-- **Real-Time Attendance Gauges**: Visual alerts and warning indicators when a course's attendance approaches the minimum threshold (default: 75%).
-
-### Timetable & Calendar
-- **Timetable Mapping**: Supports creating recurring weekly sessions (Lectures, Tutorials, Labs, and Seminars) grouped by a `recurringGroupId`.
-- **One-Shot Events**: Add individual one-shot events like exams, review sessions, break periods, or study halls.
-- **Recurring Exceptions**: Cancel or modify a single instance of a recurring event (with custom cancellation notes) without altering the rest of the weekly series.
-- **Interactive Planner**: Switch between Month and Week views to visual-triage your workload.
+Here is a showcase of how NexusDesk solves real academic pain points.
 
 ---
 
-## 🧠 Supercharged AI Ingestion Inbox
+## 📥 Hero Feature: The AI Ingestion Inbox
 
-### One-Upload Syllabus Parser
-Upload a single PDF or image of an academic syllabus, calendar, or timetable, and the system automatically extracts and registers:
-1. **Semester & Enrolled Courses**: Identifies codes, course names, and schedules on the fly.
-2. **TIMETABLE GENERATOR**: Parses day and time slots, automatically generating recurring calendar events in your planner.
-3. **SPACED STUDY PLANS**: Generates task milestones and structures study prep tasks (e.g. revision tasks spaced 7, 3, and 1 day before exams) automatically.
-4. **PROJECT BREAKDOWN**: Automatically detects course projects and splits them into incremental milestones leading up to final deadlines.
-5. **AI GPA TRIAGE**: Computes triage and priority notes explaining each task's grade weight, estimated difficulty, and impact on your CGPA.
+* **Problem**: 
+  Setting up a new semester is exhausting. You have to manually enter dozens of recurring lectures, parse homework deadlines from multiple PDFs, schedule preparation milestones leading up to exams, and organize learning materials. Within a week, the manual effort fails.
+* **What NexusDesk does**:
+  It extracts entire academic roadmaps from a single document upload. Drag and drop a syllabus PDF, calendar image, or text paste into the Inbox. The system automatically registers:
+  1. **Course Schedules**: Identifies lectures, tutorials, and labs, creating recurring events in your calendar.
+  2. **Spaced Milestones**: Automatically structures preparation tasks spaced 7 days, 3 days, and 1 day before major exams.
+  3. **GPA Triage Notes**: Computes the GPA impact, estimated difficulty, and study strategies for every task.
+* **Why it matters**:
+  A complete semester structure is generated from syllabus documents in under 60 seconds. You skip the data entry chore and start executing immediately.
 
-### Smart Conflict Prevention
-Before applying the parsed inbox items to your database, the system runs validation checks to highlight:
-- **Course Code Mismatches**: Warns you if a course code is already registered in the active semester under a different name.
-- **Schedule Overlaps**: Warns you if a recurring class overlaps in time with an existing class in your calendar.
-- **Checklist Duplicates**: Detects duplicate task titles to prevent cluttering your Kanban board.
+---
+
+## 📅 Conflict Prevention & Scheduling
+
+* **Problem**:
+  Setting up academic schedules manually often results in silent calendar clashes, double-bookings, and duplicate tasks across different pages.
+* **What NexusDesk does**:
+  Before committing inbox items to the database, the ingestion engine cross-references your active calendar to run three validation checks:
+  1. **Course Code Mismatches**: Flags if an ingested course code is already registered under a different name.
+  2. **Schedule Overlaps**: Scans your database to warn of scheduling clashes with existing events before inserting.
+  3. **Checklist Duplicates**: Detects duplicate task titles to prevent Kanban clutter.
+* **Why it matters**:
+  It acts as a shield for your schedule, guaranteeing a clean calendar without manual verification.
 
 ---
 
 ## 🎙️ Non-Blocking Audio Notes Pipeline
 
-### Multi-Source Recording
-- **Microphone Input**: Record physical classroom lectures directly from the CLI or Web UI.
-- **System Audio Loopback**: Record Zoom meetings, Google Meet, YouTube tutorials, or browser tab audio directly.
-- **FFmpeg Compression**: Automatically encodes recorded audio files into space-saving MP3/WebM formats.
-
-### Async Note-Taker Pipeline
-- **Non-Blocking Background Workers**: Start transcription/summarization and immediately return to your work.
-- **Multi-Stage Progress Indicator**: The client displays live progress polling (`transcribing` ➔ `generating` ➔ `saving` ➔ `complete`).
-- **Styled Lecture Notes**: Generates fully formatted **Markdown (.md)** files and **Microsoft Word (.docx)** documents with highlighted key concepts and structured bullet points.
-- **Action Item Extraction**: Extracts tasks from the lecture text and appends them to your checklist automatically.
+* **Problem**:
+  Classroom discussions and online lectures move too fast for comprehensive note-taking. Attempting to write down details causes students to miss key concepts.
+* **What NexusDesk does**:
+  An asynchronous voice ingestion workflow designed to capture and summarize lectures:
+  - **Multi-Source Capture**: Records physical classroom audio via microphone, or browser meetings (Zoom, Google Meet, YouTube) using system audio loopback.
+  - **Asynchronous Processing**: Encodes the file (MP3/WebM) and begins transcription/summarization in the background (status: `transcribing` ➔ `generating` ➔ `saving` ➔ `complete`).
+  - **Rich Artifacts**: Produces formatted Markdown (.md) and styled Microsoft Word (.docx) notes, while automatically extracting action items and creating tasks on your Kanban board.
+* **Why it matters**:
+  You can focus fully on the lecture. The background pipeline generates study notes and schedules follow-up tasks while you work on other projects.
 
 ---
 
 ## 📊 Performance, Grades & Projects
 
-### Attendance Tracker
-- **Session Attendance**: Mark sessions as `ATTENDED`, `ABSENT`, `LATE`, or `EXCUSED`.
-- **Skip Predictor**: Displays metrics showing exactly how many sessions you can skip before dropping below the attendance threshold, or how many you must attend to recover.
-
-### Grade Ledger & CGPA Simulator
-- **Course Grade Ledgers**: Log CIE (Continuous Internal Evaluation) and SEE (Semester End Evaluation) marks, scaled assignments, quizzes, and projects.
-- **Performance Projections**: Displays weighted averages and calculates the minimum SEE score required to achieve your target grade.
-- **SGPA & CGPA Projections**: Simulate projected SGPA and CGPA trends by toggling "isProjected" semester records to plan your academic roadmap.
-
-### Project Milestones Tracker
-- **Project Ledgers**: Track repository links (GitHub), Notion links, target dates, and statuses (`PLANNING`, `IN_PROGRESS`, `COMPLETED`, `ON_HOLD`).
-- **Milestone Checklists**: Add milestone targets to break large projects into manageable chunks.
-- **Daily Developer Logs**: Keep simple developer diary entries for project tracking.
+* **Problem**:
+  Tracking grades across separate spreadsheets, calculating minimum final exam scores to stay passing, and tracking side projects alongside academic coursework is fragmented.
+* **What NexusDesk does**:
+  Integrates course management, grade tracking, and project taskboards:
+  - **Attendance Tracker**: Log attendance status (`ATTENDED`, `ABSENT`, `LATE`, `EXCUSED`). The **Skip Predictor** displays exactly how many classes you can skip while staying above the 75% threshold, or how many you must attend to recover.
+  - **Grade Ledger**: Tracks internal grades, scales assignments, and projects the minimum score required in your final exams to reach your GPA targets.
+  - **CGPA Simulator**: Log SGPA/credits per semester and toggle projected grades to simulate your graduation CGPA.
+  - **Projects Tracker**: Link GitHub repositories, log developer diaries, and define project milestones alongside your coursework.
+* **Why it matters**:
+  All academic and developer timelines are consolidated, giving you a clear view of your performance and commitments.
 
 ---
 
-## 🛡️ Data Ownership & Portability
+## 🛡️ Zero Lock-In Offline Philosophy
 
-### Zero Lock-In Export
-Export your entire workspace offline at any time via the `nexus` CLI:
-- **ICS Calendar**: Export compatible `.ics` files that import directly into Google Calendar, Apple Calendar, or Outlook.
-- **Zip Archive**: Exports a complete archive of all generated notes, markdown summaries, task lists, and raw audio recordings.
-- **JSON Dump**: A raw JSON data dump for developers to parse, query, or port elsewhere.
+* **Problem**:
+  Cloud tools keep your data locked in proprietary databases, making it difficult to back up, export, or transition to other tools.
+* **What NexusDesk does**:
+  It operates locally, saving all files, recordings, and schemas inside your project directory. The CLI (`./bin/nexus`) provides immediate data exports:
+  - **ICS Calendar**: Export compatible `.ics` files that import directly into Google Calendar, Apple Calendar, or Outlook.
+  - **Zip Archive**: Pack all notes, summaries, tasks, and raw audio recordings into a single backup.
+  - **JSON Dump**: Access a raw JSON export of all database tables.
+* **Why it matters**:
+  You retain full ownership of your data. No servers to go down, no subscription costs, and your data is always portable.

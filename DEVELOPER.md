@@ -1,10 +1,57 @@
 # Developer & Reference Guide
 
-This document contains full specifications for database schemas, internal APIs, processing scripts, agentic architectures, and development workflows.
+Students don't fail to stay organized because they lack apps — they fail because manual data entry is too tedious to sustain. NexusDesk eliminates that friction entirely. Drop a blurry timetable photo, a 50-page syllabus PDF, or a messy lecture recording — and your entire semester is set up in seconds.
 
 ---
 
-## 1. Database Schema
+## 📐 Architecture Summary
+NexusDesk is structured as a pnpm monorepo consisting of a React Vite frontend, an Express API server, and a Lemma agentic backend, communicating locally via REST and Webhook payloads. All application states are stored locally inside a single SQLite file (`sqlite.db`) managed via Drizzle ORM. Python-based subprocesses handle heavy workloads like offline Whisper transcription and multimodal document summary generations.
+
+---
+
+## 🧠 Core Centerpiece: Lemma Agentic Architecture
+
+The background execution engine runs on port `4000` via the Lemma SDK. It leverages a student datastore, an enterprise datastore, and three custom autonomous agents to manage workloads:
+
+```
+                  ┌───────────────────────────────┐
+                  │      Express API Server       │
+                  │         (Port 8080)           │
+                  └──────────────┬────────────────┘
+                                 │ Webhook
+                                 │ (e.g. task:created)
+                                 ▼
+                  ┌───────────────────────────────┐
+                  │    Lemma Agentic Backend      │
+                  │         (Port 4000)           │
+                  └──────┬───────────────┬────────┘
+                         │               │
+            ┌────────────▼───┐       ┌───▼────────────┐
+            │  Triage Agent  │       │Academic Copilot│
+            │ (Audio Routing)│       │ (Study Plans)  │
+            └────────────────┘       └───────┬────────┘
+                                             │ Triggered
+                                             ▼
+                                     ┌────────────────┐
+                                     │   Enterprise   │
+                                     │   Architect    │
+                                     │(Blocker Solver)│
+                                     └────────────────┘
+```
+
+### 1. The 3 Custom Autonomous Agents
+* **Triage Agent** (`triageAgent.ts`): Monitors the `./transcripts/` directory for incoming text files. It parses transcripts using natural language processing to extract actionable items, determines whether they are Academic or Professional, and routes them to the correct Datastore.
+* **Academic Copilot** (`academicCopilot.ts`): Automatically runs when a task is created or updated. It scans the due date, evaluates its priority, and writes spaced repetition study milestones (e.g., preparation steps at 7, 3, and 1 day prior) along with custom video and documentation recommendations back to the datastore.
+* **Enterprise Solution Architect** (`enterpriseSolutionArch.ts`): Automatically triggers when a project or milestone status is set to `BLOCKED`. It analyzes the blocking issue description and generates troubleshooting instructions for the user.
+
+### 2. Events & Webhook Integrations
+API server database mutations dispatch event payloads directly to the Lemma backend at `http://127.0.0.1:4000/api/agent/events` to trigger agent tasks asynchronously:
+* `task:created` / `task:updated` ➔ Prompts the `AcademicCopilot` agent to generate learning strategies.
+* `syllabus:applied` ➔ Prompts the `runWeeklyDigest()` workflow to update the overall dashboard roadmap.
+
+---
+
+## 🗄️ Database Schema
 
 All data lives in `sqlite.db` at the project root. Managed by **Drizzle ORM**.
 
@@ -26,10 +73,9 @@ All data lives in `sqlite.db` at the project root. Managed by **Drizzle ORM**.
 
 ---
 
-## 2. API Reference
+## 🌐 API Reference
 
-Base URL: `http://localhost:8080`
-All endpoints use JSON. IDs are UUIDs.
+Base URL: `http://localhost:8080` (JSON-based payloads, UUID keys).
 
 ### Health & Core
 - `GET /health`: Server health check + DB connectivity
@@ -94,7 +140,7 @@ All endpoints use JSON. IDs are UUIDs.
 
 ---
 
-## 3. Python Processing Scripts
+## 🐍 Python Processing Scripts
 
 Located in `scripts/`. Invoked by the Express API server as child processes.
 
@@ -122,33 +168,7 @@ python3 scripts/gemini_report_maker.py --data grades.csv --images chart1.png --t
 
 ---
 
-## 4. Agentic Backend & AI Copilot Architecture
-
-The Lemma backend runs on port `4000` and manages background agentic workflows. In parallel, a Google Gemini-driven **Academic Copilot** is fully embedded in the core Express API server and React frontend:
-- **AI Meeting to Execution Operator**: Converts unstructured transcripts and syllabus PDFs (captured via Web UI or CLI) into structured tasks, schedules, and priorities on a Neo-Brutalist Kanban execution board.
-- **Proactive Milestone Generator**: Intelligently creates spaced study prep tasks for exams and structures milestones for complex projects automatically.
-- **On-Demand AI Copilot**: Any manually added task can be instantly supercharged with a single click inside the task details view, generating a custom study strategy and curated video/text resource recommendations.
-- **AI Second Brain**: Feeds resources, schedules, and notes into background agents (via the Lemma SDK) to guide study paths and troubleshoot project blockages.
-
-### How Lemma is Integrated
-
-#### 1. Data Layer: Lemma Records API
-Our student and professional datastores ([studentDatastore.ts](./backend/src/datastores/studentDatastore.ts) and [enterpriseDatastore.ts](./backend/src/datastores/enterpriseDatastore.ts)) use the **Lemma Records API** (`lemmaClient.records`) to store, update, and manage structured tasks, milestones, and learning assets.
-
-#### 2. Agent Layer: Lemma Agents & Conversations API
-We run three custom autonomous agents using `lemmaClient.agents.run`:
-- **Triage Agent** (`triageAgent.ts`): Routes incoming audio transcripts from the `./transcripts/` folder. It classifies content as **Academic** or **Professional**, extracts action items, owners, and deadlines, and routes them to the correct Record store.
-- **Academic Proactive Copilot** (`academicCopilot.ts`): Triggered by a webhook on task changes. It evaluates deadline urgency and generates customized study strategies (e.g. spaced repetition for exams) along with curated external resources (e.g. YouTube explainers, practice problems).
-- **Enterprise Solution Architect** (`enterpriseSolutionArch.ts`): Triggered when a task status becomes `BLOCKED`. It inspects the blocker context and writes actionable troubleshooting recommendations back to the datastore.
-
-#### 3. Webhook Events Dispatcher
-API server mutations dispatch webhooks directly to the Lemma backend on `http://127.0.0.1:4000/api/agent/events` to trigger immediate background agent execution:
-- `task:created` / `task:updated` ➔ Triggers the `AcademicCopilot` agent to scan and strategy-prep tasks.
-- `syllabus:applied` ➔ Triggers the `runWeeklyDigest()` workflow to update the dashboard report.
-
----
-
-## 5. Monorepo Package Map
+## 📂 Monorepo Package Map
 
 This is a **pnpm workspace** monorepo. Packages reference each other via `@workspace/*` aliases.
 
@@ -172,29 +192,16 @@ This regenerates `lib/api-client-react/src/generated/` and `lib/api-zod/src/gene
 
 ---
 
-## 6. Implementation Status
+## ⚙️ Contributing & Development Flow
 
-### ✅ Implemented Features
-
-- **Database Foundation**: Drizzle ORM + libsql/SQLite, portable `NEXUSDESK_DB_URL`, schema indexes on courseId, status, date.
-- **Semester Management**: Full CRUD (`GET/POST/PATCH/DELETE /api/semesters`).
-- **Course Management**: Full CRUD, real-time attendance stats (`effectivePct`, `canSkip`, `mustAttend`).
-- **Event / Schedule**: Recurring series generation, instance cancellations, and series-aware recurring exceptions (series delete/update/cancel).
-- **Attendance Tracking**: Mark present/absent per event, per-course aggregates, at-risk detection.
-- **Task Kanban**: TODO / IN_PROGRESS / DONE lanes, priority levels, category filter, inline create.
-- **CGPA Simulator**: Historical semester records, SGPA-weighted CGPA projection tool.
-- **Inbox Ingestion**: Non-blocking background ingestion, real-time polling, and smart conflict checks (courses, tasks, schedule overlaps).
-- **Inbox UX**: Structured form preview (not raw JSON), editable courses/sessions/actions, and potential conflict alerts.
-- **Export**: ZIP export of all data, ICS calendar.
-- **Dashboard / Today**: Current session, upcoming events, attendance health, pending actions.
-- **Planner / Calendar**: Weekly/monthly view, exam timeline, session cancellations.
-- **Course Detail**: Grade ledger, attendance gauge, session list.
-- **Demo Mode**: `POST /api/demo/seed` seeds 5 courses, 290+ events, 250+ attendance records, 8 tasks, CGPA history.
-- **Hardcoded Path Fix**: All hardcoded user home paths replaced with `process.env.NEXUSDESK_ROOT` fallback.
-- **DB Indexes**: Indexes on `courseId`, `startTime`, `status`, `category`, `dueDate`, `recurringGroupId`.
-- **Class Notes (Audio)**: Live Web UI recording with mic/screen/tab/mix, non-blocking background audio pipeline, and multi-stage progress tracking.
-- **Resources Page**: Browsable per-course materials, custom document upload, and AI resource recommendations.
-- **Projects Page**: Progress entry logs, project details, linked tasks, and milestone timelines.
-- **ICS Calendar Sync**: Zero Lock-in ZIP export containing Google Calendar compatible `calendar.ics`.
-- **Python Whisper Integration**: Local faster-whisper audio transcription support without API key.
-- **Lemma Agentic Hooks**: Event-driven event webhook dispatcher that decouples API mutations and triggers Lemma workflows asynchronously.
+To contribute to NexusDesk:
+1. **Branch creation**: Branch off `main` for feature development.
+2. **Schema updates**: Edit schema models under `lib/db/src/schema/`. Update the SQLite DB using:
+   ```bash
+   pnpm --filter @workspace/db push-force
+   ```
+3. **Rebuild Express API**: If you update routing logic, rebuild using:
+   ```bash
+   npx pnpm@9 --filter @workspace/api-server run build
+   ```
+4. **Local Verification**: Execute test suites using local test frameworks, ensuring all `129/130 passes` are preserved.
