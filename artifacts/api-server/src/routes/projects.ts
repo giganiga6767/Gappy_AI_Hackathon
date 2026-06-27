@@ -30,7 +30,7 @@ router.post("/projects", async (req, res): Promise<void> => {
   const [row] = await db.insert(projectsTable).values({
     name,
     status: status ?? "PLANNING",
-    components: components ?? [],
+    components: components ? JSON.stringify(components) : null,
     ...(description && { description }),
     ...(githubUrl && { githubUrl }),
     ...(notionUrl && { notionUrl }),
@@ -57,7 +57,7 @@ router.patch("/projects/:projectId", async (req, res): Promise<void> => {
       ...(name && { name }),
       ...(description !== undefined && { description }),
       ...(status && { status }),
-      ...(components !== undefined && { components }),
+      ...(components !== undefined && { components: components ? JSON.stringify(components) : null }),
       ...(githubUrl !== undefined && { githubUrl }),
       ...(notionUrl !== undefined && { notionUrl }),
       ...(targetDate !== undefined && { targetDate }),

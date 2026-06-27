@@ -5,7 +5,7 @@ import { eq, and, gte, lte } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/dashboard/summary", async (req, res): Promise<void> => {
+async function getDashboardSummary(req: any, res: any): Promise<void> {
   const today = new Date();
   const dayStart = new Date(today.toISOString().split("T")[0] + "T00:00:00.000Z");
   const dayEnd = new Date(today.toISOString().split("T")[0] + "T23:59:59.999Z");
@@ -25,7 +25,7 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   }));
 
   const attended = todayAttended.filter(a => a?.status === "ATTENDED").length;
-  const missed = todayAttended.filter(a => a?.status === "MISSED").length;
+  const missed = todayAttended.filter(a => a?.status === "ABSENT" || a?.status === "MISSED").length;
 
   // Courses at risk
   const courses = await db.select().from(coursesTable);
@@ -36,7 +36,7 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   for (const course of courses) {
     const records = await db.select().from(attendanceTable).where(eq(attendanceTable.courseId, course.id));
     const att = records.filter(r => r.status === "ATTENDED").length;
-    const miss = records.filter(r => r.status === "MISSED").length;
+    const miss = records.filter(r => r.status === "ABSENT" || r.status === "MISSED").length;
     const total = att + miss;
     const pct = total === 0 ? 100 : (att / total) * 100;
     if (pct < course.minAttendancePct) atRiskCount++;
@@ -84,6 +84,9 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
     todayMissed: missed,
     upcomingExams: enrichedExams,
   });
-});
+}
+
+router.get("/dashboard/summary", getDashboardSummary);
+router.get("/dashboard", getDashboardSummary);
 
 export default router;

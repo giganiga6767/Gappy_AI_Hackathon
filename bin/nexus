@@ -10,4 +10,4 @@ if [ -s "$HOME/.nvm/nvm.sh" ]; then
   . "$NVM_DIR/nvm.sh"
 fi
 
-exec npx --yes tsx "$NEXUS_ROOT/bin/nexus.mjs" "$@"
+exec "$NEXUS_ROOT/node_modules/.pnpm/node_modules/.bin/tsx" "$NEXUS_ROOT/bin/nexus.mjs" "$@"

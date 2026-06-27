@@ -91,4 +91,26 @@ router.get("/grades/course/:courseId/summary", async (req, res): Promise<void> =
   });
 });
 
+router.get("/grades/summary/:courseId", async (req, res): Promise<void> => {
+  const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, req.params.courseId)).limit(1);
+  if (!course) { res.status(404).json({ error: "Course not found" }); return; }
+
+  const items = await db.select().from(gradesTable).where(eq(gradesTable.courseId, req.params.courseId)).orderBy(gradesTable.createdAt);
+  const enriched = items.map(enrichGrade);
+
+  const totalObtained = enriched.reduce((s, g) => s + g.obtainedMarks, 0);
+  const totalMax = enriched.reduce((s, g) => s + g.maxMarks, 0);
+  const percentage = totalMax === 0 ? 0 : Math.round((totalObtained / totalMax) * 1000) / 10;
+
+  res.json({
+    courseId: course.id,
+    courseName: course.name,
+    subjectCode: course.subjectCode,
+    items: enriched,
+    totalObtained,
+    totalMax,
+    percentage,
+  });
+});
+
 export default router;

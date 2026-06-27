@@ -16,7 +16,7 @@ router.get("/attendance", async (req, res): Promise<void> => {
   const summaries = await Promise.all(courses.map(async (course) => {
     const records = await db.select().from(attendanceTable).where(eq(attendanceTable.courseId, course.id));
     const attended = records.filter(r => r.status === "ATTENDED").length;
-    const missed = records.filter(r => r.status === "MISSED").length;
+    const missed = records.filter(r => r.status === "ABSENT" || r.status === "MISSED").length;
     const cancelled = records.filter(r => r.status === "CANCELLED").length;
     const totalRecords = attended + missed;
     const effectivePct = totalRecords === 0 ? 100 : Math.round((attended / totalRecords) * 1000) / 10;
@@ -71,6 +71,34 @@ router.post("/attendance/mark", async (req, res): Promise<void> => {
     ...(note && { note }),
   }).returning();
   res.json(row);
+});
+
+router.get("/attendance/summary/:courseId", async (req, res): Promise<void> => {
+  const courseId = req.params.courseId;
+  const [course] = await db.select().from(coursesTable).where(eq(coursesTable.id, courseId)).limit(1);
+  if (!course) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const records = await db.select().from(attendanceTable).where(eq(attendanceTable.courseId, courseId));
+  const attended = records.filter(r => r.status === "ATTENDED").length;
+  const missed = records.filter(r => r.status === "ABSENT" || r.status === "MISSED").length;
+  const totalClasses = attended + missed;
+  const effectivePct = totalClasses === 0 ? 100 : Math.round((attended / totalClasses) * 1000) / 10;
+  const minPct = course.minAttendancePct;
+  const isAtRisk = effectivePct < minPct;
+  const canSkip = totalClasses === 0 ? 999 : Math.max(0, Math.floor((attended - (minPct / 100) * totalClasses) / (minPct / 100)));
+  const mustAttend = effectivePct >= minPct ? 0 : Math.max(0, Math.ceil((minPct / 100 * totalClasses - attended) / (1 - minPct / 100)));
+
+  res.json({
+    effectivePct,
+    canSkip,
+    mustAttend,
+    totalClasses,
+    attended,
+    missed,
+    isAtRisk,
+  });
 });
 
 export default router;

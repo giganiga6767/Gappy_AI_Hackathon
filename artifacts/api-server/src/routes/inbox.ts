@@ -319,6 +319,8 @@ router.post("/inbox/:id/understand", async (req, res): Promise<void> => {
 Analyze this academic document (syllabus, calendar, timetable, assignment guidelines, or notes) and generate a comprehensive, pre-scheduled, and highly-optimized semester roadmap.
 Current Date: ${currentDate}
 
+CRITICAL: If the document is a general academic calendar or administrative schedule that does not specify a student's individual curriculum, DO NOT invent fictional courses. Instead, extract only the general administrative/academic dates (e.g. registration, holidays, exam weeks) and assign them to a generic subject code like "GEN" or "ADMIN".
+
 In addition to extracting the raw events and courses mentioned in the text, you must use your academic intelligence to proactively generate:
 1. PREP TASKS & MILESTONES: For every major exam (midterm, final) or project/assignment mentioned:
    - Generate 2-3 preparation tasks (e.g. "Review formulas for [Course] Exam", "Draft essay outline for [Assignment]") scheduled at appropriate dates leading up to the deadline (e.g., 7 days, 3 days, 1 day prior).

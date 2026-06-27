@@ -84,7 +84,7 @@ fi
 
 # 5. Push Database Schemas (no full typecheck — just push the schema)
 echo -e "\n🗄️ Provisioning local SQLite database schema..."
-DATABASE_URL="file:$WORKSPACE_DIR/sqlite.db" NEXUSDESK_DB_URL="file:$WORKSPACE_DIR/sqlite.db" npx pnpm@9 --filter @workspace/db push
+DATABASE_URL="file:$WORKSPACE_DIR/sqlite.db" NEXUSDESK_DB_URL="file:$WORKSPACE_DIR/sqlite.db" npx pnpm@9 --filter @workspace/db push-force
 if [ $? -ne 0 ]; then
   echo "❌ Error: Database schema push failed."
   exit 1

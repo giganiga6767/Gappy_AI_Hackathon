@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { coursesTable, attendanceTable, eventsTable } from "@workspace/db";
+import { coursesTable, attendanceTable, eventsTable, gradesTable, tasksTable, resourcesTable } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 
 const router = Router();
@@ -11,7 +11,7 @@ async function getCourseWithStats(courseId: string) {
 
   const records = await db.select().from(attendanceTable).where(eq(attendanceTable.courseId, courseId));
   const attended = records.filter(r => r.status === "ATTENDED").length;
-  const missed = records.filter(r => r.status === "MISSED").length;
+  const missed = records.filter(r => r.status === "ABSENT" || r.status === "MISSED").length;
   const cancelled = records.filter(r => r.status === "CANCELLED").length;
   const totalClasses = attended + missed;
   const effectivePct = totalClasses === 0 ? 100 : Math.round((attended / totalClasses) * 1000) / 10;
@@ -40,6 +40,11 @@ router.post("/courses", async (req, res): Promise<void> => {
   const { subjectCode, name, shortName, creditWeight, minAttendancePct, facultyName, roomNumber, color, semesterId } = req.body;
   if (!subjectCode || !name || !shortName || !semesterId) {
     res.status(400).json({ error: "subjectCode, name, shortName, semesterId required" });
+    return;
+  }
+  const [existing] = await db.select().from(coursesTable).where(and(eq(coursesTable.subjectCode, subjectCode), eq(coursesTable.semesterId, semesterId))).limit(1);
+  if (existing) {
+    res.status(400).json({ error: "Course code already registered under different name" });
     return;
   }
   const [row] = await db.insert(coursesTable).values({
@@ -78,7 +83,17 @@ router.patch("/courses/:courseId", async (req, res): Promise<void> => {
 });
 
 router.delete("/courses/:courseId", async (req, res): Promise<void> => {
-  await db.delete(coursesTable).where(eq(coursesTable.id, req.params.courseId));
+  const courseId = req.params.courseId;
+  await db.delete(eventsTable).where(eq(eventsTable.courseId, courseId));
+  await db.delete(attendanceTable).where(eq(attendanceTable.courseId, courseId));
+  await db.delete(gradesTable).where(eq(gradesTable.courseId, courseId));
+  await db.delete(tasksTable).where(eq(tasksTable.linkedCourseId, courseId));
+  await db.delete(resourcesTable).where(eq(resourcesTable.courseId, courseId));
+  const [deleted] = await db.delete(coursesTable).where(eq(coursesTable.id, courseId)).returning();
+  if (!deleted) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   res.status(204).end();
 });
 

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { eventsTable, attendanceTable, coursesTable } from "@workspace/db";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { eq, and, gte, lte, lt, gt, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -66,11 +66,23 @@ router.post("/events", async (req, res): Promise<void> => {
   }
 
   if (!isRecurring || !recurrenceDays?.length) {
-    const groupId = crypto.randomUUID();
+    const s = new Date(startTime);
+    const e = new Date(endTime);
+    const overlaps = await db.select().from(eventsTable).where(
+      and(
+        eq(eventsTable.isCancelled, false),
+        lt(eventsTable.startTime, e),
+        gt(eventsTable.endTime, s)
+      )
+    );
+    if (overlaps.length > 0) {
+      res.status(400).json({ error: "Schedule overlap detected" });
+      return;
+    }
     const [row] = await db.insert(eventsTable).values({
       title, type,
-      startTime: new Date(startTime),
-      endTime: new Date(endTime),
+      startTime: s,
+      endTime: e,
       ...(location && { location }),
       ...(courseId && { courseId }),
       isRecurring: false,
@@ -112,6 +124,20 @@ router.post("/events", async (req, res): Promise<void> => {
   if (!toInsert.length) {
     res.status(201).json({ created: 0, events: [] });
     return;
+  }
+
+  for (const item of toInsert) {
+    const overlaps = await db.select().from(eventsTable).where(
+      and(
+        eq(eventsTable.isCancelled, false),
+        lt(eventsTable.startTime, item.endTime),
+        gt(eventsTable.endTime, item.startTime)
+      )
+    );
+    if (overlaps.length > 0) {
+      res.status(400).json({ error: "Schedule overlap detected" });
+      return;
+    }
   }
 
   const rows = await db.insert(eventsTable).values(toInsert).returning();

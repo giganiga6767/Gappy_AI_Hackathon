@@ -8,10 +8,13 @@ import { emitEvent } from "../lib/events";
 const router = Router();
 
 router.get("/tasks", async (req, res): Promise<void> => {
-  const { category, status } = req.query as Record<string, string>;
+  const { category, status, priority, courseId, linkedCourseId } = req.query as Record<string, string>;
   const conditions: any[] = [];
   if (category) conditions.push(eq(tasksTable.category, category));
   if (status) conditions.push(eq(tasksTable.status, status));
+  if (priority) conditions.push(eq(tasksTable.priority, priority));
+  if (courseId) conditions.push(eq(tasksTable.linkedCourseId, courseId));
+  if (linkedCourseId) conditions.push(eq(tasksTable.linkedCourseId, linkedCourseId));
 
   const rows = await db.select().from(tasksTable)
     .where(conditions.length ? and(...conditions) : undefined)
@@ -31,7 +34,7 @@ router.post("/tasks", async (req, res): Promise<void> => {
     ...(description && { description }),
     ...(dueDate && { dueDate }),
     priority: priority ?? "MEDIUM",
-    tags: tags ?? [],
+    tags: tags ? JSON.stringify(tags) : null,
     ...(linkedCourseId && { linkedCourseId }),
     ...(linkedProjectId && { linkedProjectId }),
   }).returning();
@@ -55,7 +58,7 @@ router.patch("/tasks/:taskId", async (req, res): Promise<void> => {
       ...(status && { status }),
       ...(category && { category }),
       ...(priority && { priority }),
-      ...(tags !== undefined && { tags }),
+      ...(tags !== undefined && { tags: tags ? JSON.stringify(tags) : null }),
     })
     .where(eq(tasksTable.id, req.params.taskId))
     .returning();
