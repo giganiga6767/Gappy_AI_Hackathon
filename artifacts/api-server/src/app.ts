@@ -43,7 +43,7 @@ import path from "path";
 const frontendDist = path.resolve(import.meta.dirname, "../../nexusdesk/dist/public");
 app.use(express.static(frontendDist));
 
-app.get("*", (req, res, next) => {
+app.get("/*splat", (req, res, next) => {
   if (req.path.startsWith("/api") || req.path.startsWith("/health")) {
     return next();
   }
