@@ -48,13 +48,16 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      <div className="p-4 border-t-2 border-ink bg-surface">
+      <div className="p-4 border-t-2 border-ink bg-surface space-y-3">
         <Link
           href="/inbox"
-          className="block text-center font-mono text-xs font-bold py-2 px-4 bg-sage text-paper border-2 border-ink"
+          className="block text-center font-mono text-xs font-bold py-2 px-4 bg-sage text-paper border-2 border-ink active:translate-x-[1px] active:translate-y-[1px]"
         >
           + QUICK CAPTURE
         </Link>
+        <div className="text-center font-mono text-[9px] font-bold py-1.5 px-2 bg-cream text-ink border-2 border-ink uppercase tracking-wide">
+          ⚡ Powered by Lemma Agents
+        </div>
       </div>
     </aside>
   );
