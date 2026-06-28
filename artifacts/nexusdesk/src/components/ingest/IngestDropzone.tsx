@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useIngestText } from "@workspace/api-client-react";
 import type { IngestResult } from "@workspace/api-client-react";
 import { BrutalCard } from "../shared/BrutalCard";
 import { BrutalButton } from "../shared/BrutalButton";
 import { BrutalBadge } from "../shared/BrutalBadge";
-import { FileText, Upload, Sparkles, Eye, EyeOff, X, AlertCircle, Image as ImageIcon } from "lucide-react";
+import { FileText, Upload, Sparkles, Eye, EyeOff, X, AlertCircle, Image as ImageIcon, Music } from "lucide-react";
 
 export function IngestDropzone() {
+  const [location, setLocation] = useLocation();
   const [text, setText] = useState("");
   const [result, setResult] = useState<IngestResult | null>(null);
   
@@ -26,6 +28,7 @@ export function IngestDropzone() {
   
   const [fileName, setFileName] = useState<string | null>(null);
   const [image, setImage] = useState<string | null>(null); // base64 data url for images
+  const [audioFile, setAudioFile] = useState<{ base64: string, name: string } | null>(null);
 
   useEffect(() => {
     localStorage.setItem("nexusdesk_llm_provider", provider);
@@ -172,6 +175,7 @@ export function IngestDropzone() {
     const isPDF = file.type === "application/pdf" || file.name.endsWith(".pdf");
     const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|gif|webp)$/i.test(file.name);
     const isText = file.type === "text/plain" || file.name.endsWith(".txt");
+    const isAudio = file.type.startsWith("audio/") || /\.(mp3|wav|m4a|ogg|flac|aac|webm)$/i.test(file.name);
 
     if (isPDF) {
       handleParsePdf(file);
@@ -185,16 +189,68 @@ export function IngestDropzone() {
         setText((prev) => prev ? prev + "\n\n" + textVal : textVal);
         setFileName(file.name);
         setImage(null);
+        setAudioFile(null);
         setIsParsing(false);
       };
       reader.readAsText(file);
+    } else if (isAudio) {
+      setIsParsing(true);
+      setParseError(null);
+      setFileName(file.name);
+      setImage(null);
+      setText("");
+      setResult(null);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target?.result as string;
+        setAudioFile({
+          base64: dataUrl.split(",")[1] || dataUrl,
+          name: file.name
+        });
+        setIsParsing(false);
+      };
+      reader.onerror = () => {
+        setParseError("Audio file reading failed.");
+        setIsParsing(false);
+      };
+      reader.readAsDataURL(file);
     } else {
-      setParseError("Only PDF, TXT, and Image (PNG, JPG, WEBP) files are supported.");
+      setParseError("Only PDF, TXT, Image, and Audio files are supported.");
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (audioFile) {
+      setResult(null);
+      setIsParsing(true);
+      try {
+        const res = await fetch("/api/inbox/capture", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: audioFile.name.replace(/\.[^/.]+$/, ""),
+            type: "audio",
+            fileBase64: audioFile.base64,
+            fileName: audioFile.name
+          })
+        });
+        if (res.ok) {
+          handleClear();
+          setIsParsing(false);
+          setLocation("/inbox");
+        } else {
+          const err = await res.json();
+          setParseError(err.error || "Failed to upload audio to Inbox");
+          setIsParsing(false);
+        }
+      } catch (error: any) {
+        setParseError(error.message || "Failed to upload audio to Inbox");
+        setIsParsing(false);
+      }
+      return;
+    }
+
     if (!text.trim() && !image) return;
     
     setResult(null);
@@ -213,6 +269,7 @@ export function IngestDropzone() {
     setText("");
     setFileName(null);
     setImage(null);
+    setAudioFile(null);
     setParseError(null);
   };
 
@@ -324,7 +381,7 @@ export function IngestDropzone() {
             <input
               id="file-upload"
               type="file"
-              accept=".pdf,.txt,.png,.jpg,.jpeg,.webp"
+              accept=".pdf,.txt,.png,.jpg,.jpeg,.webp,.mp3,.wav,.m4a,.ogg,.flac,.aac,.webm"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -339,10 +396,10 @@ export function IngestDropzone() {
                   <Upload className="h-6 w-6 text-ink" />
                 </div>
                 <p className="font-mono text-xs font-bold text-ink">
-                  DRAG & DROP TIMETABLE / CALENDAR (PDF, TXT, JPG, PNG)
+                  DRAG & DROP TIMETABLE / CLASS AUDIO / CALENDAR (PDF, TXT, MP3, WAV, JPG, PNG)
                 </p>
                 <p className="font-mono text-[10px]">
-                  Or click here to browse files. Timetables can be text documents, screenshots, or PDF files.
+                  Or click here to browse files. Supports syllabus PDFs, timetables, and class audio recordings.
                 </p>
               </div>
             )}
@@ -363,9 +420,9 @@ export function IngestDropzone() {
           {fileName && (
             <div className="p-2 px-4 bg-sageLight/30 text-sageDark border-b-2 border-ink flex items-center justify-between font-mono text-xs">
               <div className="flex items-center gap-2">
-                {image ? <ImageIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                {audioFile ? <Music className="h-4 w-4" /> : image ? <ImageIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                 <span className="font-bold">{fileName.toUpperCase()}</span>
-                <span>({image ? "IMAGE ATTACHED" : "TEXT EXTRACTED"})</span>
+                <span>({audioFile ? "AUDIO LOADED (WILL GO TO INBOX)" : image ? "IMAGE ATTACHED" : "TEXT EXTRACTED"})</span>
               </div>
               <button 
                 type="button" 
@@ -374,6 +431,29 @@ export function IngestDropzone() {
               >
                 <X className="h-3 w-3" />
               </button>
+            </div>
+          )}
+
+          {/* Audio Preview Block */}
+          {audioFile && (
+            <div className="p-4 border-b-2 border-ink bg-paper/50 flex flex-col items-center">
+              <span className="font-mono text-[10px] font-bold text-inkLight block mb-2 align-self-start">AUDIO RECORDING READY</span>
+              <div className="border-4 border-ink p-4 shadow-brutal max-w-md w-full bg-paper flex items-center gap-4">
+                <div className="p-2 bg-terracotta border-2 border-ink shadow-brutal-sm text-paper">
+                  <Music className="h-6 w-6 animate-pulse" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-xs font-bold text-ink truncate">{audioFile.name}</p>
+                  <p className="font-mono text-[10px] text-inkLight">Click INGEST below to send to Inbox for transcription</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setAudioFile(null); setFileName(null); }}
+                  className="bg-paper hover:bg-terracottaLight border-2 border-ink p-1 shadow-brutal-sm"
+                >
+                  <X className="h-3 w-3 text-ink" />
+                </button>
+              </div>
             </div>
           )}
 

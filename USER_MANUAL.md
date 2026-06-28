@@ -74,6 +74,14 @@ Record system loopback audio to transcribe an online webinar, Zoom meeting, or c
 ```
 *Press `Ctrl + C` when finished to stop the recording.*
 
+### 5. Ingestion Dropzone Audio Drop (NEW for quick demos!)
+For fast presentations or short demos:
+Instead of doing a live recording and waiting for it to finish, you can drop an existing recording directly into the Web UI:
+1. Go to the **Data Ingest** page in the Web UI.
+2. Drag and drop any class recording file (`.mp3`, `.wav`, `.m4a`, etc.) directly onto the dropzone.
+3. The app will automatically convert it to base64, save it in the workspace recordings, create an audio inbox item, and redirect you to the **Inbox** page.
+4. From the Inbox, click `🧠 UNDERSTAND` to transcribe and process the recording instantly.
+
 ---
 
 ## 📤 Zero Lock-In Export Commands

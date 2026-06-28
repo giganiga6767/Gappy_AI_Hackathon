@@ -41,6 +41,7 @@ Here is a showcase of how NexusDesk solves real academic pain points.
 * **What NexusDesk does**:
   An asynchronous voice ingestion workflow designed to capture and summarize lectures:
   - **Multi-Source Capture**: Records physical classroom audio via microphone, or browser meetings (Zoom, Google Meet, YouTube) using system audio loopback.
+  - **Direct File Drop (Quick Demo Mode)**: Drag and drop pre-recorded lecture files (`.mp3`, `.wav`, `.m4a`, etc.) directly into the **Data Ingest** panel to instantly convert them and queue them in your Inbox for rapid demo transcription.
   - **Asynchronous Processing**: Encodes the file (MP3/WebM) and begins transcription/summarization in the background (status: `transcribing` ➔ `generating` ➔ `saving` ➔ `complete`).
   - **Rich Artifacts**: Produces formatted Markdown (.md) and styled Microsoft Word (.docx) notes, while automatically extracting action items and creating tasks on your Kanban board.
 * **Why it matters**:

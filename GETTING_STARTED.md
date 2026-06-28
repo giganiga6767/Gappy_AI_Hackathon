@@ -94,6 +94,9 @@ Ingest content into your Inbox from the terminal:
 
 After capturing, navigate to **Inbox** in the Web UI to preview and commit the data.
 
+> [!TIP]
+> **Quick Demo Mode**: During a live presentation where you only have 2 minutes, instead of starting a live recording and waiting, you can drag and drop an existing audio recording (`.mp3`, `.wav`, etc.) directly into the **Data Ingest** page in the Web UI. It will be converted, uploaded to your Inbox, and redirect you there automatically so you can trigger transcription (`🧠 UNDERSTAND`) immediately!
+
 ---
 
 ## Daily Team Workflows
