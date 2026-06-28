@@ -11,7 +11,7 @@ Drop any academic document — a timetable photograph, a project spec sheet, a v
 | Field            | Value                                                          |
 | ---------------- | -------------------------------------------------------------- |
 | Team             | Niranjan G, Abhihas Gedela, Mayuk Doshi                        |
-| Institutions     | NITK Surathkal (ECE) · IIT Kharagpur · IIT Bhubaneswar         |
+| Institutions     | NITK Surathkal (ECE) · IIT Kharagpur(MECHANICAL · IIT Bhubaneswar(ECE)         |
 | Submission Date  | June 27, 2026                                                  |
 | Branch           | `main`                                                         |
 | Build Status     | Stable                                                         |
