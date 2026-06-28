@@ -6,10 +6,15 @@ dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 function getDbUrl(): string {
   const envUrl = process.env.DATABASE_URL;
+  const rootDir = path.resolve(__dirname, "../../..");
   if (envUrl && !envUrl.startsWith("postgres:") && !envUrl.startsWith("postgresql:")) {
+    if (envUrl.startsWith("file:") && !envUrl.startsWith("file:/")) {
+      const relativePath = envUrl.substring(5);
+      return `file:${path.resolve(rootDir, relativePath)}`;
+    }
     return envUrl;
   }
-  return process.env.NEXUSDESK_DB_URL || "file:./sqlite.db";
+  return process.env.NEXUSDESK_DB_URL || `file:${path.join(rootDir, "sqlite.db")}`;
 }
 
 let _client: Client | null = null;
