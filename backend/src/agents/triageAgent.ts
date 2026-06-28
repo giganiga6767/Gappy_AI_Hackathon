@@ -40,7 +40,7 @@ Schema: { "target": "student" | "enterprise", "payload": { ...fields } }`;
 
   const inputPrompt = `Raw Transcript:\n"""\n${rawText}\n"""`;
 
-  const conversation = await lemmaClient.agents.run("TriageAgent", `${systemPrompt}\n\n${inputPrompt}`);
+  const conversation = await lemmaClient.agents.run("triageagent", `${systemPrompt}\n\n${inputPrompt}`);
   
   let attempts = 0;
   let assistantMsgText = "";

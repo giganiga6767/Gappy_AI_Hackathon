@@ -60,7 +60,7 @@ Existing materials: ${context.artifactTitles.join(", ") || "None"}`;
 
   let assistantMsgText = "";
   try {
-    const conversation = await lemmaClient.agents.run("ResourceRecommenderAgent", prompt);
+    const conversation = await lemmaClient.agents.run("resourcerecommenderagent", prompt);
     let attempts = 0;
     while (attempts < 15 && !assistantMsgText) {
       await new Promise((resolve) => setTimeout(resolve, 1000));

@@ -109,4 +109,24 @@ router.post("/recommend-resources", async (req: Request, res: Response, next: Ne
   }
 });
 
+router.get("/conversations", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { lemmaClient } = await import("../../datastores/studentDatastore");
+    const list = await lemmaClient.conversations.list({ limit: 100 });
+    res.json(list);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/conversations/:convId/messages", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { lemmaClient } = await import("../../datastores/studentDatastore");
+    const messages = await lemmaClient.conversations.messages.list(req.params.convId, { limit: 100 });
+    res.json(messages);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

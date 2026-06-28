@@ -18,6 +18,7 @@ import TasksPage from "@/pages/TasksPage";
 import CGPAPage from "@/pages/CGPAPage";
 import ProjectsPage from "@/pages/ProjectsPage";
 import ResourcesPage from "@/pages/ResourcesPage";
+import TracesPage from "@/pages/TracesPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,6 +59,7 @@ function Router() {
       <Route path="/cgpa" component={CGPAPage} />
       <Route path="/projects" component={ProjectsPage} />
       <Route path="/resources" component={ResourcesPage} />
+      <Route path="/traces" component={TracesPage} />
       <Route path="/export" component={ExportPage} />
       <Route component={NotFound} />
     </Switch>

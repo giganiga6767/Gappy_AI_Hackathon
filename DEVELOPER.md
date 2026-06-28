@@ -40,13 +40,15 @@ The background execution engine runs on port `4000` via the Lemma SDK. It levera
 ```
 
 ### 1. The 3 Custom Autonomous Agents
-* **Triage Agent** (`triageAgent.ts`): Monitors the `./transcripts/` directory for incoming text files. It parses transcripts using natural language processing to extract actionable items, determines whether they are Academic or Professional, and routes them to the correct Datastore.
-* **Academic Copilot** (`academicCopilot.ts`): Automatically runs when a task is created or updated. It scans the due date, evaluates its priority, and writes spaced repetition study milestones (e.g., preparation steps at 7, 3, and 1 day prior) along with custom video and documentation recommendations back to the datastore.
-* **Enterprise Solution Architect** (`enterpriseSolutionArch.ts`): Automatically triggers when a project or milestone status is set to `BLOCKED`. It analyzes the blocking issue description and generates troubleshooting instructions for the user.
+* **Triage Agent** (`triageagent`): Monitors the `./transcripts/` directory for incoming text files. It parses transcripts using natural language processing to extract actionable items, determines whether they are Academic or Professional, and routes them to the correct Datastore.
+* **Academic Copilot** (`academicproactivecopilot`): Automatically runs when a task is created or updated. It scans the due date, evaluates its priority, and writes spaced repetition study milestones (e.g., preparation steps at 7, 3, and 1 day prior) along with custom video and documentation recommendations back to the datastore.
+* **Enterprise Solution Architect** (`enterprisesolutionarchitect`): Automatically triggers when a project or milestone status is set to `BLOCKED`. It analyzes the blocking issue description and generates troubleshooting instructions for the user.
+
+Reasoning traces, plans, and conversational history for all 3 agents are persisted inside the Postgres datastore and can be inspected inside the **AGENT TRACES** tab in the dashboard.
 
 ### 2. Events & Webhook Integrations
 API server database mutations dispatch event payloads directly to the Lemma backend at `http://127.0.0.1:4000/api/agent/events` to trigger agent tasks asynchronously:
-* `task:created` / `task:updated` ➔ Prompts the `AcademicCopilot` agent to generate learning strategies.
+* `task:created` / `task:updated` ➔ Prompts the `academicproactivecopilot` agent to generate learning strategies.
 * `syllabus:applied` ➔ Prompts the `runWeeklyDigest()` workflow to update the overall dashboard roadmap.
 
 ---

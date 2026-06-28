@@ -98,7 +98,7 @@ ${JSON.stringify(context, null, 2)}`;
 
   let assistantMsgText = "";
   try {
-    const conversation = await lemmaClient.agents.run("WeeklyDigestAgent", prompt);
+    const conversation = await lemmaClient.agents.run("weeklydigestagent", prompt);
     let attempts = 0;
     while (attempts < 15 && !assistantMsgText) {
       await new Promise((resolve) => setTimeout(resolve, 1000));

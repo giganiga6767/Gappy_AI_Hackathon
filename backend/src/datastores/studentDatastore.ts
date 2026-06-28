@@ -9,6 +9,11 @@ export const lemmaClient = new LemmaClient({
   authUrl: process.env.LEMMA_AUTH_URL || "http://127.0.0.1:3711/auth",
 });
 
+if (process.env.LEMMA_API_KEY) {
+  // @ts-ignore
+  lemmaClient.auth.injectedToken = process.env.LEMMA_API_KEY;
+}
+
 const podId = process.env.POD_ID || "default-pod";
 lemmaClient.setPodId(podId);
 
@@ -26,15 +31,14 @@ function mapRecordToTask(record: Record<string, any>): StudentTask {
     gpaPoints: record.gpaPoints !== undefined && record.gpaPoints !== null ? Number(record.gpaPoints) : null,
     recommended_materials: Array.isArray(record.recommended_materials) ? record.recommended_materials : [],
     notes: record.notes || "",
-    createdAt: new Date(record.createdAt),
-    updatedAt: new Date(record.updatedAt),
+    createdAt: new Date(record.created_at || record.createdAt || new Date()),
+    updatedAt: new Date(record.updated_at || record.updatedAt || new Date()),
   };
 }
 
 export const studentDatastore = {
   async createTask(payload: CreateStudentTaskInput): Promise<StudentTask> {
     const taskId = crypto.randomUUID();
-    const now = new Date();
     const recordData = {
       taskId,
       ...payload,
@@ -42,8 +46,6 @@ export const studentDatastore = {
       recommended_materials: [],
       currentScore: payload.currentScore ?? null,
       gpaPoints: payload.gpaPoints ?? null,
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
     };
 
     const record = await lemmaClient.records.create(TABLE_NAME, recordData);

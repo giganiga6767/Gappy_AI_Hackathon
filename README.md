@@ -35,13 +35,14 @@ Students don't fail to stay organized because they lack apps — they fail becau
 
 ## Lemma SDK & Agentic Integration
 
-NexusDesk integrates three background agents to automate student operations:
+NexusDesk integrates background agents to automate student operations:
 
-* **Triage Agent** (`triageAgent.ts`): Automatically scans raw incoming transcripts in the `./transcripts/` directory, extracts actionable checklist items, and routes them to student records.
-* **Academic Copilot Agent** (`academicCopilot.ts`): Triggers via event webhooks when a new task is created. It analyzes task parameters to generate custom study roadmaps and recommend video/text learning resources.
-* **Enterprise Solution Architect** (`enterpriseSolutionArch.ts`): Monitors projects and triggers troubleshooting advice if a milestone becomes blocked.
+* **Triage Agent** (`triageagent`): Automatically scans raw incoming transcripts in the `./transcripts/` directory, extracts actionable checklist items, and routes them to student records.
+* **Academic Copilot Agent** (`academicproactivecopilot`): Triggers via event webhooks when a new task is created. It analyzes task parameters to generate custom study roadmaps and recommend video/text learning resources.
+* **Enterprise Solution Architect** (`enterprisesolutionarchitect`): Monitors projects and triggers troubleshooting advice if a milestone becomes blocked.
 
-API server mutations dispatch webhooks directly to the Lemma backend to trigger these agentic background runs asynchronously, keeping client-side operations fast and non-blocking.
+### Real-Time Reasoning Traces
+You can inspect agent reasoning, prompts, and plans in real time via the **AGENT TRACES** tab on the sidebar. This page connects directly to the local Lemma server's HTTP API and displays full message histories, system prompts, and structured output payloads for all background agent runs.
 
 ---
 

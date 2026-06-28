@@ -38,7 +38,7 @@ Respond ONLY with valid JSON:
 
   const inputPrompt = `Task JSON:\n${JSON.stringify(task, null, 2)}`;
 
-  const conversation = await lemmaClient.agents.run("AcademicProactiveCopilot", `${systemPrompt}\n\n${inputPrompt}`);
+  const conversation = await lemmaClient.agents.run("academicproactivecopilot", `${systemPrompt}\n\n${inputPrompt}`);
 
   let attempts = 0;
   let assistantMsgText = "";

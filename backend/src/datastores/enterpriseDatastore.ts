@@ -19,23 +19,20 @@ function mapRecordToTask(record: Record<string, any>): EnterpriseTask {
     blockerReason: record.blockerReason || null,
     ai_solutions: Array.isArray(record.ai_solutions) ? record.ai_solutions : [],
     tags: Array.isArray(record.tags) ? record.tags : [],
-    createdAt: new Date(record.createdAt),
-    updatedAt: new Date(record.updatedAt),
+    createdAt: new Date(record.created_at || record.createdAt || new Date()),
+    updatedAt: new Date(record.updated_at || record.updatedAt || new Date()),
   };
 }
 
 export const enterpriseDatastore = {
   async createTask(payload: CreateEnterpriseTaskInput): Promise<EnterpriseTask> {
     const sprintId = crypto.randomUUID();
-    const now = new Date();
     const recordData = {
       sprintId,
       ...payload,
       billableHours: payload.billableHours ?? 0,
       blockerReason: payload.blockerReason ?? null,
       ai_solutions: [],
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
     };
 
     const record = await lemmaClient.records.create(TABLE_NAME, recordData);

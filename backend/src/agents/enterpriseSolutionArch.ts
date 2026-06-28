@@ -52,7 +52,7 @@ Do not include solutions you are not confident about. Quality over quantity.`;
 
   const inputPrompt = `Blocked Task JSON:\n${JSON.stringify(task, null, 2)}`;
 
-  const conversation = await lemmaClient.agents.run("EnterpriseSolutionArchitect", `${systemPrompt}\n\n${inputPrompt}`);
+  const conversation = await lemmaClient.agents.run("enterprisesolutionarchitect", `${systemPrompt}\n\n${inputPrompt}`);
 
   let attempts = 0;
   let assistantMsgText = "";

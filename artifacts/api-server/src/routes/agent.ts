@@ -97,4 +97,24 @@ router.post("/agent/recommend-resources", async (req, res): Promise<void> => {
   }
 });
 
+router.get("/agent/conversations", async (req, res): Promise<void> => {
+  try {
+    const { status, body } = await proxyToBackend("/api/agent/conversations");
+    res.status(status).json(body);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Backend unavailable";
+    res.status(503).json({ error: message });
+  }
+});
+
+router.get("/agent/conversations/:convId/messages", async (req, res): Promise<void> => {
+  try {
+    const { status, body } = await proxyToBackend(`/api/agent/conversations/${req.params.convId}/messages`);
+    res.status(status).json(body);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Backend unavailable";
+    res.status(503).json({ error: message });
+  }
+});
+
 export default router;
